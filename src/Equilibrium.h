@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "ini.h"
+#include "../inih/INIReader.h"
 
 class Equilibrium
 {
@@ -20,6 +20,9 @@ private:
     double qbar_axis;
     double qbar_edge;
     void validateInputs() {
+        if (iequmodel <= 0) {
+            throw std::runtime_error("Error: Invalid 'iequmodel' value.");
+        }
         if (c1adhoc < 0.0) {
             throw std::runtime_error("Error: c1adhoc must be non-negative.");
         }
@@ -43,39 +46,24 @@ public:
 
     // Member function
     void readInput(const std::string& inputFile) {
-        std::ifstream file(inputFile);
-        if (!file.is_open()) {
-            throw std::runtime_error("Error: Unable to open input file '" + inputFile + "'");
+        INIReader reader(inputFile);
+
+        // Check if reading was successful
+        if (reader.ParseError() < 0) {
+            throw std::runtime_error("Error: Unable to open or parse input file '" + inputFile + "'");
         }
 
-        // Temporary variables for reading
-        std::string key;
-        while (file >> key) {
-            if (key == "iequmodel") {
-                file >> iequmodel;
-            } else if (key == "c1adhoc") {
-                file >> c1adhoc;
-            } else if (key == "c2adhoc") {
-                file >> c2adhoc;
-            } else if (key == "rmaxis_adhoc") {
-                file >> rmaxis_adhoc;
-            } else if (key == "Bmaxis_adhoc") {
-                file >> Bmaxis_adhoc;
-            } else if (key == "set_zerof") {
-                int temp;
-                file >> temp;
-                set_zerof = (temp != 0);
-            } else if (key == "fname") {
-                file >> fname;
-            } else if (key == "profilename") {
-                file >> profilename;
-            } else {
-                throw std::runtime_error("Error: Unrecognized key '" + key + "' in input file.");
-            }
-        }
-        file.close();
+        // Read key-value pairs
+        iequmodel = reader.GetInteger("Equilibrium", "iequmodel", 2);
+        c1adhoc = reader.GetReal("Equilibrium", "c1adhoc", 0.0);
+        c2adhoc = reader.GetReal("Equilibrium", "c2adhoc", 0.0);
+        rmaxis_adhoc = reader.GetReal("Equilibrium", "rmaxis_adhoc", 0.0);
+        Bmaxis_adhoc = reader.GetReal("Equilibrium", "Bmaxis_adhoc", 0.0);
+        set_zerof = reader.GetBoolean("Equilibrium", "set_zerof", false);
+        fname = reader.Get("Equilibrium", "fname", "");
+        profilename = reader.Get("Equilibrium", "profilename", "");
 
-        // Validate inputs
+        // Optional: Add validation and other logic
         validateInputs();
     }
 

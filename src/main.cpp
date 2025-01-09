@@ -18,7 +18,7 @@ int main() {
     particle.displayState();
     eq.displayEquilibrium();
     // ---------------------------------------------------------
-    eq.readInput("input.txt");
+    eq.readInput("input.ini");
     eq.printState();
     std::cout<<"qbar(0)="<<eq.get_qbar(0.0)<<std::endl;
 

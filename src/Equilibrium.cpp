@@ -316,7 +316,7 @@ double Equilibrium::getdBdthe(double rad, double the0)
         rormaj = rad / rmaxis;
         qloc = getqloc_rt(rad, the0);
         var = Bmaxis * rormaj * std::sin(the0) / (1.0 - rormaj * rormaj) *
-              std::sqrt(std::pow(rormaj, 2) /
+              std::sqrt(rormaj*rormaj /
                             (std::pow(qloc, 2) * (1.0 - rormaj * rormaj)) +
                         1.0);
     }
@@ -347,7 +347,7 @@ double Equilibrium::getBrad_co(double rad, double the0)
     {
         // For model 2, performing calculations based on formula
         rormaj = rad / rmaxis;
-        var = std::pow(rormaj, 2) * Bmaxis * std::sin(the0) /
+        var = rormaj*rormaj * Bmaxis * std::sin(the0) /
               (getqloc_rt(rad, the0) * std::pow(1 - rormaj * rormaj, 2));
     }
 
@@ -378,7 +378,7 @@ double Equilibrium::getdBrad_codrad(double rad, double the0)
         // For model 2, performing calculations based on formula
         rormaj = rad / rmaxis;
         var = (-rad * getdqdrloc_rt(rad, the0) / getqloc_rt(rad, the0) +
-               4.0 * std::pow(rormaj, 2) / (1.0 - rormaj * rormaj)) *
+               4.0 * rormaj*rormaj / (1.0 - rormaj * rormaj)) *
               rormaj * Bmaxis * std::sin(the0) /
               (rmaxis * getqloc_rt(rad, the0) * std::pow(1.0 - rormaj * rormaj, 2));
     }
@@ -408,7 +408,7 @@ double Equilibrium::getdBrad_codthe(double rad, double the0)
     {
         // For model 2, performing calculations based on formula
         rormaj = rad / rmaxis;
-        var = std::cos(the0) * std::pow(rormaj, 2) * Bmaxis /
+        var = std::cos(the0) * rormaj*rormaj * Bmaxis /
               (getqloc_rt(rad, the0) * std::pow(1.0 - rormaj * rormaj, 2));
     }
 
@@ -488,9 +488,9 @@ double Equilibrium::getdBthe_codrad(double rad, double the0)
         // For model 2, apply formula using rormaj and Bmaxis
         rormaj = rad / rmaxis;
         var = (-rad * getdqdrloc_rt(rad, the0) / getqloc_rt(rad, the0) + 2.0 +
-               2.0 * std::pow(rormaj, 2) / (1.0 - std::pow(rormaj, 2))) *
+               2.0 * rormaj*rormaj / (1.0 - rormaj*rormaj)) *
               rormaj * Bmaxis /
-              (getqloc_rt(rad, the0) * std::pow(1.0 - std::pow(rormaj, 2), 2));
+              (getqloc_rt(rad, the0) * std::pow(1.0 - rormaj*rormaj, 2));
     }
 
     return var;
@@ -602,7 +602,7 @@ double Equilibrium::getBthe_co_direct(double rad, double the0)
         calcdrtdRZ(rad, the, drdR, drdZ, dtdR, dtdZ, jaco2);
 
         // Compute g11
-        g11 = std::pow(drdR, 2) + std::pow(drdZ, 2);
+        g11 = drdR*drdR + drdZ*drdZ;
 
         // Get radius
         RR = getR(rad, the);
@@ -624,7 +624,7 @@ double Equilibrium::getcos_straight_adhoc(double rad, double the0,
                                           double rmaxis)
 {
     double rormaj = rad / rmaxis;
-    double var = -1.0 / rormaj + (1.0 - std::pow(rormaj, 2)) /
+    double var = -1.0 / rormaj + (1.0 - rormaj*rormaj) /
                                      (rormaj * (1.0 - rormaj * std::cos(the0)));
     return var;
 }
@@ -634,7 +634,7 @@ double Equilibrium::getsin_straight_adhoc(double rad, double the0,
                                           double rmaxis)
 {
     double rormaj = rad / rmaxis;
-    double var = std::sqrt(1.0 - std::pow(rormaj, 2)) * std::sin(the0) /
+    double var = std::sqrt(1.0 - rormaj*rormaj) * std::sin(the0) /
                  (1.0 - rormaj * std::cos(the0));
     return var;
 }
@@ -711,7 +711,7 @@ double Equilibrium::getdRdthe(double rad, double the0)
     else if (iequmodel == 2)
     {
         // Calculate the derivative for model 2
-        var = -rad * (1.0 - std::pow(rormaj, 2)) * std::sin(the0) /
+        var = -rad * (1.0 - rormaj*rormaj) * std::sin(the0) /
               std::pow(1.0 - rormaj * std::cos(the0), 2);
     }
 
@@ -761,10 +761,9 @@ double Equilibrium::getdZdrad(double rad, double the0)
     }
     else if (iequmodel == 2)
     {
-        // Calculate the derivative for model 2
         var = getsin_straight_adhoc(rad, the0, rmaxis) +
               rormaj * std::sin(the0) * (std::cos(the0) - rormaj) /
-                  (std::sqrt(1.0 - std::pow(rormaj, 2)) *
+                  (std::sqrt(1.0 - rormaj*rormaj) *
                    std::pow(1.0 - rormaj * std::cos(the0), 2));
     }
 
@@ -790,7 +789,7 @@ double Equilibrium::getdZdthe(double rad, double the0)
     else if (iequmodel == 2)
     {
         // Calculate the derivative for model 2
-        var = rad * std::sqrt(1.0 - std::pow(rormaj, 2)) /
+        var = rad * std::sqrt(1.0 - rormaj*rormaj) /
               std::pow(1.0 - rormaj * std::cos(the0), 2) *
               (std::cos(the0) - rormaj);
     }
@@ -814,8 +813,8 @@ double Equilibrium::getdqdrloc_rt(double rad, double the)
         // Calculate based on model 2
         var = 2.0 * c2adhoc * rad + (c1adhoc + c2adhoc * std::pow(rad, 2)) *
                                         rormaj /
-                                        ((1.0 - std::pow(rormaj, 2)) * rmaxis);
-        var /= std::sqrt(1.0 - std::pow(rormaj, 2));
+                                        ((1.0 - rormaj*rormaj) * rmaxis);
+        var /= std::sqrt(1.0 - rormaj*rormaj);
     }
 
     return var;

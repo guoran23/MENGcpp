@@ -6,7 +6,8 @@ add_executable(simulation
     Particle.cpp
     Field.cpp
     Equilibrium.cpp
-    ini.c
+    ../inih/INIReader.cpp 
+    ../inih/ini.c
 )
 
 # Include headers
