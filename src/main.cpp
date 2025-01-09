@@ -17,6 +17,10 @@ int main() {
     std::cout << "Initial State:\n";
     particle.displayState();
     eq.displayEquilibrium();
+    // ---------------------------------------------------------
+    eq.readInput("input.txt");
+    eq.printState();
+    std::cout<<"qbar(0)="<<eq.get_qbar(0.0)<<std::endl;
 
     double timeStep = 0.1;
     for (int i = 0; i < 10; ++i) {
