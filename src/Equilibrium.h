@@ -19,14 +19,18 @@ private:
     double aminor;
     double qbar_axis;
     double qbar_edge;
-    void validateInputs() {
-        if (iequmodel <= 0) {
+    void validateInputs()
+    {
+        if (iequmodel <= 0)
+        {
             throw std::runtime_error("Error: Invalid 'iequmodel' value.");
         }
-        if (c1adhoc < 0.0) {
+        if (c1adhoc < 0.0)
+        {
             throw std::runtime_error("Error: c1adhoc must be non-negative.");
         }
-        if (c2adhoc < 0.0) {
+        if (c2adhoc < 0.0)
+        {
             throw std::runtime_error("Error: c2adhoc must be non-negative.");
         }
     }
@@ -40,16 +44,18 @@ public:
     // ---------------------------------------------------------
     // Constructor
     Equilibrium()
-        : iequmodel(2), c1adhoc(1.71), c2adhoc(0.16), rmaxis_adhoc(10.0), 
-          Bmaxis_adhoc(2.0), set_zerof(false), fname("g031213.00003"), 
+        : iequmodel(2), c1adhoc(1.71), c2adhoc(0.16), rmaxis_adhoc(10.0),
+          Bmaxis_adhoc(2.0), set_zerof(false), fname("g031213.00003"),
           profilename("profile.h5") {}
 
     // Member function
-    void readInput(const std::string& inputFile) {
+    void readInput(const std::string &inputFile)
+    {
         INIReader reader(inputFile);
 
         // Check if reading was successful
-        if (reader.ParseError() < 0) {
+        if (reader.ParseError() < 0)
+        {
             throw std::runtime_error("Error: Unable to open or parse input file '" + inputFile + "'");
         }
 
@@ -67,7 +73,8 @@ public:
         validateInputs();
     }
 
-    void printState() const {
+    void printState() const
+    {
         std::cout << "iequmodel: " << iequmodel << "\n"
                   << "c1adhoc: " << c1adhoc << "\n"
                   << "c2adhoc: " << c2adhoc << "\n"
@@ -272,7 +279,5 @@ public:
         }
     }
 };
-
-
 
 #endif // EQUILIBRIUM_H
