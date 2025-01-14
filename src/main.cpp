@@ -7,15 +7,15 @@ int main() {
     // Create a magnetic field
     Field field(10.0);
 
-    // Create a particle
-    Particle particle(1.0, 1.0, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0});
+    // Create a particle spieses
+    ParticleSpecies particle(2, 1.0, -1.0);
 
     // Create an equilibrium state
     Equilibrium eq(101325.0, 300.0);
 
     // Simulate particle motion
     std::cout << "Initial State:\n";
-    particle.displayState();
+    // particle.displayState();
     eq.displayEquilibrium();
     // ---------------------------------------------------------
     eq.readInput("input.ini");
@@ -24,11 +24,11 @@ int main() {
 
     double timeStep = 0.1;
     for (int i = 0; i < 10; ++i) {
-        particle.move(field, timeStep);
+        // particle.move(field, timeStep);
     }
 
     std::cout << "\nFinal State:\n";
-    particle.displayState();
+    // particle.displayState();
     eq.displayEquilibrium();
 
     return 0;

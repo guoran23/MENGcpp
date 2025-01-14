@@ -17,3 +17,6 @@ target_include_directories(simulation PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(simulation PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
+
+# Link MPI libraries
+target_link_libraries(simulation ${MPI_LIBRARIES})

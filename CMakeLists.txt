@@ -5,6 +5,12 @@ project(Simulation)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Enable MPI
+find_package(MPI REQUIRED)
+
+# Include directories for MPI
+include_directories(${MPI_INCLUDE_PATH})
+
 # Specify the source directory
 add_subdirectory(src)
 
