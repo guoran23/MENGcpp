@@ -1,0 +1,74 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Serial",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build"
+            ],
+            "group": {
+                "kind": "build"
+            }
+        },
+        {
+            "label": "Run Serial",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/bin/simulation",
+            "group": "test"
+        },
+        {
+            "label": "Configure MPI",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--preset",
+                "mpi"
+            ],
+            "group": {
+                "kind": "build",
+            }
+        },
+        {
+            "label": "Build MPI",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build_MPI"
+            ],
+            "dependsOn": {
+                "label": "Configure MPI"
+            },
+            "group": {
+                "kind": "build"
+            }
+        },
+
+        {
+            "label": "Run MPI",
+            "type": "shell",
+            "command": "mpirun",
+            "args": [
+                "-n",
+                "2",
+                "${workspaceFolder}/build_MPI/bin/simulation"
+            ],
+            "problemMatcher": [],
+            "dependsOn": "Build MPI",
+            "group": "test",
+            "options": {
+                "cwd": "${workspaceFolder}/build_MPI/bin", // 设置工作目录
+                "detail": "Running MPI task: This will execute mpirun -n 2 ..."
+            },
+            "presentation": {
+                "reveal": "always",
+                "close": false, // Prevents the terminal from auto-closing
+                "panel": "shared"
+            }
+        }
+        
+    ]
+}

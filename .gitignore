@@ -1,4 +1,7 @@
 build/
 build*/*
-.vscode/
 src/*.F90
+
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
