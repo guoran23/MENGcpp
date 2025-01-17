@@ -38,7 +38,7 @@ public:
         Equilibrium eq(101325.0, 300.0);
         eq.readInput("input.ini");
         
-        eq.printState();
+        // eq.printState();
         std::cout << "qbar(0) = " << eq.get_qbar(0.0) << std::endl;
 
         // Create particle object for simulation

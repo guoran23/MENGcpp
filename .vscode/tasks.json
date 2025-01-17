@@ -60,7 +60,7 @@
             "dependsOn": "Build MPI",
             "group": "test",
             "options": {
-                "cwd": "${workspaceFolder}/build_MPI/bin", // 设置工作目录
+                "cwd": "${workspaceFolder}/inputfiles/", // 设置工作目录
                 "detail": "Running MPI task: This will execute mpirun -n 2 ..."
             },
             "presentation": {

@@ -21,7 +21,7 @@
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build_MPI",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_BUILD_TYPE": "Debug",
                 "USE_MPI": "ON"
             }
         }

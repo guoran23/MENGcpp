@@ -58,7 +58,7 @@ public:
         {
             throw std::runtime_error("Error: Unable to open or parse input file '" + inputFile + "'");
         }
-
+        std::cout << "eq readInput: " << "Equilibrium" << std::endl;
         // Read key-value pairs
         iequmodel = reader.GetInteger("Equilibrium", "iequmodel", 2);
         c1adhoc = reader.GetReal("Equilibrium", "c1adhoc", 0.0);

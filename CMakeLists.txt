@@ -6,7 +6,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Enable MPI
-find_package(MPI REQUIRED)
+if(USE_MPI)
+    find_package(MPI REQUIRED)
+else()
+    message(STATUS "MPI not enabled in this configuration.")
+endif()
+
 
 # Include directories for MPI
 include_directories(${MPI_INCLUDE_PATH})

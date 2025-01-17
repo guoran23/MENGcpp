@@ -101,7 +101,7 @@ public:
 
 class ParticleSpecies {
 private:
-  int np;
+  int nptot;
   std::string species_name;
   double mass = 1.0;
   double zcharge = -1.0;
@@ -111,11 +111,11 @@ public:
   // Constructor
   ParticleSpecies(size_t nparticles, double m, double q,
                   const std::string &name = "unknown")
-      : np(nparticles), coords(nparticles), mass(m), zcharge(q),
+      : nptot(nparticles), coords(nparticles), mass(m), zcharge(q),
         species_name(name) {}
 
   // Accessors
-  int getnp() const { return np; }
+  int getnp() const { return nptot; }
   double getMass() const { return mass; }
   double getCharge() const { return zcharge; }
   ParticleCoords &getCoords() { return coords; }
@@ -195,7 +195,7 @@ public:
   double nsonN = 1.0;
   double Tem = 1.0;
   int nptot;
-  long long nptot_all = 1000000;
+  long long nptot_all = 1000000; // particle # in all PEs
   double vparmaxovt = 5.0;
   double vparmaxovN;
   double mumaxovN2;
@@ -245,33 +245,37 @@ public:
   std::vector<double> radsrcsnkL, radsrcsnkR;
   std::vector<double> coefsrcsnkL, coefsrcsnkR;
   double partwcut;
-  // Assuming timer_cls is a class or struct defined elsewhere
+  //
   // timer_cls timer;
 public:
-  // Add a new species to the group
-  // void addSpecies(size_t nparticles, double mass, double charge) {
-  //   group.addSpecies(nparticles, mass, charge);
-  // }
-
-  void readInput(const std::string &filepath) {
+  void readInput(const std::string &filepath, int mpisize) {
     INIReader reader(filepath);
-
+    std::cout << "Reading input file: " << filepath << std::endl;
+    std::cout << "Number of MPI processes: " << mpisize << std::endl;
     if (reader.ParseError() < 0) {
       std::cerr << "Error: Unable to load INI file: " << filepath << std::endl;
     }
-
+    nsp = reader.GetInteger("MENG", "nsp", 0);
     // Iterate over predefined sections
-    std::vector<std::string> sections = {"Particle"};
-    for (const auto &section : sections) {
-      if (section == "Particle") {
-        size_t nparticles = reader.GetInteger(section, "nparticles", 0);
-        double mass = reader.GetReal(section, "mass", 0.0);
-        double charge = reader.GetReal(section, "charge", 0.0);
+    for (int i = 1; i <= nsp; ++i) {
+      std::string section = "Particle_" + std::to_string(i);
+      std::cout << "Processing section: " << section << std::endl;
 
-        if (nparticles > 0) {
-          group.addSpecies(std::make_shared<ParticleSpecies>(nparticles, mass,
-                                                             charge, section));
-        }
+      size_t nptot_all = reader.GetInteger(section, "nptot_all", 0);
+      double mass = reader.GetReal(section, "mass", 0.0);
+      double zcharge = reader.GetReal(section, "zcharge", 0.0);
+      std::string species_name = reader.Get(section, "species_name", "unknown");
+
+      if (nptot_all > 0) {
+        nptot = nptot_all / mpisize;       // calculate particles per process
+        nptot_all = nptot * mpisize;       // update total number of particles
+        auto species = std::make_shared<ParticleSpecies>(nptot, mass,
+                                                         zcharge, species_name);
+        group.addSpecies(species);
+        std::cout << "  Species '" << species_name << "' added successfully.\n";
+        // Log the parsed values
+        std::cout << "  nptot: " << nptot << ", mass: " << mass
+                  << ", charge: " << zcharge << std::endl;
       }
     }
   }
@@ -287,20 +291,20 @@ public:
 
   void print() const { group.print(); }
 
-  Particle(Equilibrium &equ, int rank, int mpisize) : equ(equ) {
+  Particle(Equilibrium &equ_in, int rank, int mpisize_in) : equ(equ_in) {
+    
+    std::cout << "Instance Particle @process " << rank << " of " << mpisize_in << ".\n";
+    // 1. READINPUT
+    readInput("input.ini", mpisize_in);
     if (rank == 0) {
-      std::cout << "----Initializing particle, species: " << species_name
+      std::cout << "Finish particle readInput...\n"
+                << "nsp =" << nsp
                 << std::endl;
     }
-
-    // 1. READINPUT
-    readInput("input.ini");
-    std::cout << "Input read successfully." << std::endl;
-
-    nptot_all = group.getTotalParticles();
-    if (rank == 0) {
-      std::cout << "Total particles: " << nptot_all << std::endl;
-    }
+    //2. Summay of particles
+    std::cout << "On process: " << rank 
+          << ", Total particles of all species: " 
+          << group.getTotalParticles() << std::endl;
 
     this->particle_cls_link2eq(equ);
   }
@@ -663,13 +667,12 @@ public:
   // }
 
   void particle_cls_link2eq(const Equilibrium &equ) {
-  Bax = std::abs(equ.Bmaxis); // note sign!
-  aminor = equ.rdim / 2;
-  rmaj = equ.rmaxis;
-  rhotN = equ.rhoN;
-}
-}
-;
+    Bax = std::abs(equ.Bmaxis); // note sign!
+    aminor = equ.rdim / 2;
+    rmaj = equ.rmaxis;
+    rhotN = equ.rhoN;
+  }
+};
 
 // class Particle {
 // private:
