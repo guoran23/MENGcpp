@@ -9,17 +9,18 @@
 #include <iomanip>
 #include <iostream>
 #include <mpi.h>
+#include <random>
 #include <string>
 #include <vector>
 
 class ParticleCoords {
 private:
   int nptot;
+
+public:
   std::vector<double> partrad, parttheta, partphitor;
   std::vector<double> partvpar;
   std::vector<double> partw;
-
-public:
   // Constructor
   ParticleCoords(int total_particles)
       : nptot(total_particles), partrad(total_particles),
@@ -102,24 +103,42 @@ public:
 class ParticleSpecies {
 private:
   int nptot;
+  long long nptot_all = 1000000; // particle # in all PEs
   std::string species_name;
   double mass = 1.0;
   double zcharge = -1.0;
   ParticleCoords coords;
+  double Tem = 1.0;
+  double nsonN = 1.0;
 
 public:
+  std::vector<double> partmu;
+  std::vector<double> partfog, partg0;
+
+  double rmin = 0.2, rmax = 0.8;
   // Constructor
   ParticleSpecies(size_t nparticles, double m, double q,
                   const std::string &name = "unknown")
       : nptot(nparticles), coords(nparticles), mass(m), zcharge(q),
-        species_name(name) {}
+        species_name(name) {
+
+    // Initialize partmu, partfog, partg0
+    partmu.resize(nptot);
+    partfog.resize(nptot);
+    partg0.resize(nptot);
+  }
 
   // Accessors
-  int getnp() const { return nptot; }
+  int getNptot() const { return nptot; }
+  long long getNptotAll() const { return nptot_all; }
   double getMass() const { return mass; }
   double getCharge() const { return zcharge; }
   ParticleCoords &getCoords() { return coords; }
   const ParticleCoords &getCoords() const { return coords; }
+  double getTem() const { return Tem; }
+  double getNsonN() const { return nsonN; }
+  void setTem(double t) { Tem = t; }
+  void setNsonN(double n) { nsonN = n; }
 
   // Print function
   void print() const {
@@ -161,7 +180,7 @@ public:
   size_t getTotalParticles() const {
     size_t total = 0;
     for (const auto &species : speciesList) {
-      total += species->getnp();
+      total += species->getNptot();
     }
     return total;
   }
@@ -191,11 +210,10 @@ public:
   int sp_id = 1;
   int ideltaf = 2;
   double phitormin = 0.0, phitormax, phitorwid;
-  int Nphimult = 2;
-  double nsonN = 1.0;
-  double Tem = 1.0;
-  int nptot;
-  long long nptot_all = 1000000; // particle # in all PEs
+  int Nphimult = 2;  // 1/Nphimult torus
+  // double nsonN = 1.0;
+  // double Tem = 1.0;
+
   double vparmaxovt = 5.0;
   double vparmaxovN;
   double mumaxovN2;
@@ -217,27 +235,33 @@ public:
   double Cp2g;
   double Cp2g2d1f;
   double Cp2g1d;
-  std::vector<double> partrad, parttheta, partphitor, partvpar, partmu;
-  std::vector<double> partw, partfog, partg0;
+  // std::vector<double> partrad, parttheta, partphitor, partvpar, partmu;
+  // std::vector<double> partw, partfog, partg0;
+
   int ntrack = 10;
   std::vector<int> itrack;
   double vts, paux_T_transit;
   int ifilter = 0, filter_m0 = -5, filter_m1 = -2, filter_nc = 2;
   std::vector<int> filter_m1d;
+  // !--perturbation--
   double pert_rc = 0.5;
   double pert_rwid = 0.125, pert_thetac, pert_thetawid;
   double pertamp = 4e-12, pert_lr = 0.0;
   int pert_scheme = 3, pert_m0 = -5, pert_m1 = -2, pert_nc = 2, pert_nmin,
       pert_nmax, pert_nstride, pert_lenm;
   std::vector<int> pert_m1d;
+  // !--perturbation--
   double ant_rc, ant_rwid, antamp, ant_w;
   int ant_scheme = 3, ant_m0 = -5, ant_m1 = -2, ant_nc = 2, ant_lenm = 4;
   std::vector<int> ant_m1d;
+  // !--neoclassical term--
   int neocls;
-  int icol;
-  double nu_colN;
+  // !--collision--
+  int icol = 0;
+  double nu_colN = 0.0;
   int v_par0 = 1, v_d = 0, v_mirror = 0, v_ExB = 0, v_Epar = 1, idwdt = 1;
   int pullbackN;
+
   int irec_track = 1, irec_Eparticle = 1;
   int irec_converge;
   bool iuseprv;
@@ -265,13 +289,21 @@ public:
       double mass = reader.GetReal(section, "mass", 0.0);
       double zcharge = reader.GetReal(section, "zcharge", 0.0);
       std::string species_name = reader.Get(section, "species_name", "unknown");
+      double rmin = reader.GetReal(section, "rmin", 0.0);
+      double rmax = reader.GetReal(section, "rmax", 0.0);
+      double Tem = reader.GetReal(section, "Tem", 1.0);
+      double nsonN = reader.GetReal(section, "nsonN", 1.0);
 
       if (nptot_all > 0) {
-        nptot = nptot_all / mpisize;       // calculate particles per process
-        nptot_all = nptot * mpisize;       // update total number of particles
-        auto species = std::make_shared<ParticleSpecies>(nptot, mass,
-                                                         zcharge, species_name);
+        int nptot = nptot_all / mpisize; // calculate particles per process
+        nptot_all = nptot * mpisize;     // update total number of particles
+        auto species = std::make_shared<ParticleSpecies>(nptot, mass, zcharge,
+                                                         species_name);
         group.addSpecies(species);
+        species->rmin = rmin;
+        species->rmax = rmax;
+        species->setTem(Tem);
+        species->setNsonN(nsonN);
         std::cout << "  Species '" << species_name << "' added successfully.\n";
         // Log the parsed values
         std::cout << "  nptot: " << nptot << ", mass: " << mass
@@ -292,385 +324,654 @@ public:
   void print() const { group.print(); }
 
   Particle(Equilibrium &equ_in, int rank, int mpisize_in) : equ(equ_in) {
-    
-    std::cout << "Instance Particle @process " << rank << " of " << mpisize_in << ".\n";
+
+    std::cout << "Instance Particle @process " << rank << " of " << mpisize_in
+              << ".\n";
     // 1. READINPUT
     readInput("input.ini", mpisize_in);
     if (rank == 0) {
       std::cout << "Finish particle readInput...\n"
-                << "nsp =" << nsp
-                << std::endl;
+                << "nsp =" << nsp << std::endl;
     }
-    //2. Summay of particles
-    std::cout << "On process: " << rank 
-          << ", Total particles of all species: " 
-          << group.getTotalParticles() << std::endl;
-
+    // 2. Summay of particles
+    std::cout << "On process: " << rank << ", Total particles of all species: "
+              << group.getTotalParticles() << std::endl;
+    // 3.
     this->particle_cls_link2eq(equ);
+    // 4. =================Load Markers=====================
+    for (int i = 0; i < nsp; i++) {
+      {
+        auto &species = group.getSpecies(i);
+        this->particle_cls_set_parms(equ, species, rank);
+        std::cout << "Finish particle_cls_set_parms...\n";
+        this->particle_cls_loadmarker(equ, species);
+      }
+    }
   }
-
-  // this->particle_cls_set_parms(equ);
-
-  //   // PT Coordinates
-  //   this->partrad.resize(this->nptot);
-  //   this->parttheta.resize(this->nptot);
-  //   this->partphitor.resize(this->nptot);
-  //   this->partvpar.resize(this->nptot);
-  //   this->partmu.resize(this->nptot);
-  //   this->partw.resize(this->nptot);
-  //   this->partfog.resize(this->nptot);
-
-  //   if (this->ideltaf == 3) {
-  //     this->partg0.resize(this->nptot);
-  //   }
-
-  //   if (!this->irestart) {
-  //     // =================Load Markers=====================
-  //     this->particle_cls_loadmarker(equ);
-  //     // =================LOAD Perturbation=====================
-  //     this->particle_cls_loadpert(equ);
-  //   } else {
-  //     this->particle_cls_restart(0);
-  //   }
-
-  //   this->particle_cls_track_init(0);
-  //   this->particle_cls_showinfo();
-
-  //   if (rank == 0) {
-  //     std::cout << std::setw(20) << "Particle Class size:" << std::setw(10)
-  //               << sizeof(*this) << " Byte " << std::endl;
-  //   }
-  // }
-  // void particle_cls_set_parms(Equilibrium &equ, int rank, int mpisize) {
-  //   // Default values
-  //   ischeme_motion = 2;
-  //   ngyro = 1;
-  //   irandom_gy = 1;
-  //   iuseprv = false;
-
-  //   isrcsnk = 0;
-  //   radsrcsnkL = {0.0, 0.1};
-  //   radsrcsnkR = {0.9, 1.0};
-  //   coefsrcsnkL = {0.0, 0.0, 0.0};
-  //   coefsrcsnkR = {0.0, 0.0, 0.0};
-
-  //   partwcut = 0.1;
-
-  //   pullbackN = 1;
-  //   neocls = 0;
-
-  //   if (rank == 0) {
-  //     // Output particle settings
-  //     std::cout << "Species " << sp_id << ", nptot=" << nptot << std::endl;
-  //   }
-
-  //   // Assign values to class members
-  //   this->irestart = irestart;
-  //   this->nptot = nptot_all / mpisize;
-  //   this->nptot_all = this->nptot * mpisize;
-  //   if (rank == 0)
-  //     std::cout << "Species " << sp_id << ", nptot=" << this->nptot
-  //               << std::endl;
-
-  //   this->ischeme_motion = ischeme_motion;
-  //   this->ngyro = ngyro;
-  //   this->irandom_gy = irandom_gy;
-  //   this->imixvar = imixvar;
-  //   this->ideltaf = ideltaf;
-  //   // Physics
-  //   this->nsonN = nsonN;
-  //   this->Tem = Tem;
-
-  //   this->vparmaxovt = vparmaxovt;
-  //   // Perturbation
-  //   this->pert_rc = pert_rc;
-  //   this->pert_rwid = pert_rwid;
-  //   this->pert_thetac = pert_thetac;
-  //   this->pert_thetawid = pert_thetawid;
-  //   this->pertamp = pertamp;
-  //   this->pert_lr = pert_lr;
-  //   this->pert_m0 = pert_m0;
-  //   this->pert_m1 = pert_m1;
-  //   this->pert_nc = pert_nc;
-  //   this->pert_nmin = pert_nmin;
-  //   this->pert_nmax = pert_nmax;
-  //   this->pert_nstride = pert_nstride;
-  //   this->pert_scheme = pert_scheme;
-  //   this->pert_lenm = std::abs(pert_m0 - pert_m1) + 1;
-  //   this->pert_m1d.resize(this->pert_lenm);
-  //   for (int fic = 1; fic <= this->pert_lenm; ++fic) {
-  //     this->pert_m1d[fic - 1] = std::min(pert_m0, pert_m1) - 1 + fic;
-  //   }
-  //   if (rank == 0) {
-  //     std::cout << "lenm=" << this->pert_lenm << ", pert_m1d=";
-  //     for (const auto &val : this->pert_m1d) {
-  //       std::cout << val << " ";
-  //     }
-  //     std::cout << std::endl;
-  //   }
-  //   // Antenna
-  //   this->ant_rc = ant_rc;
-  //   this->ant_rwid = ant_rwid;
-  //   this->antamp = antamp;
-  //   this->ant_m0 = ant_m0;
-  //   this->ant_m1 = ant_m1;
-  //   this->ant_nc = ant_nc;
-  //   this->ant_scheme = ant_scheme;
-
-  //   this->ant_lenm = std::abs(ant_m0 - ant_m1) + 1;
-  //   this->ant_m1d.resize(this->ant_lenm);
-
-  //   this->idensprof = idensprof;
-  //   this->iTemprof = iTemprof;
-  //   this->load_can = load_can;
-  //   this->ischeme_load = ischeme_load;
-  //   this->dens_coef1d = dens_coef1d;
-  //   this->Tem_coef1d = Tem_coef1d;
-
-  //   this->rmin = rmin;
-  //   this->rmax = rmax;
-  //   this->rwid = this->rmax - this->rmin;
-  //   this->rmid = (this->rmin + this->rmax) / 2.0;
-  //   this->rc = this->rmid;
-
-  //   this->ifilter = ifilter;
-  //   this->filter_nc = filter_nc;
-  //   this->filter_m0 = filter_m0;
-  //   this->filter_m1 = filter_m1;
-  //   nlen = std::abs(this->filter_m1 - this->filter_m0) + 1;
-  //   if (rank == 0)
-  //     std::cout << "nlen=" << nlen << std::endl;
-
-  //   this->filter_m1d.resize(nlen);
-  //   for (int fic = 1; fic <= nlen; ++fic) {
-  //     this->filter_m1d[fic - 1] = std::min(filter_m0, filter_m1) + (fic -
-  //     1);
-  //   }
-  //   if (rank == 0) {
-  //     std::cout << "filter_m1d=";
-  //     for (const auto &val : this->filter_m1d) {
-  //       std::cout << val << " ";
-  //     }
-  //     std::cout << std::endl;
-  //   }
-
-  //   this->Nphimult = Nphimult;
-  //   // Control variables
-  //   this->v_par0 = v_par0;
-  //   this->v_d = v_d;
-  //   this->v_mirror = v_mirror;
-  //   this->v_ExB = v_ExB;
-  //   this->v_Epar = v_Epar;
-  //   this->idwdt = idwdt;
-
-  //   this->irec_track = irec_track;
-  //   this->irec_Eparticle = irec_Eparticle;
-  //   this->irec_converge = irec_converge;
-  //   this->iuseprv = iuseprv;
-
-  //   this->ibc_particle = ibc_particle;
-  //   this->iset_zerosumw = iset_zerosumw;
-
-  //   this->icol = icol;
-  //   this->nu_colN = nu_colN;
-
-  //   this->isrcsnk = isrcsnk;
-  //   this->radsrcsnkL = radsrcsnkL;
-  //   this->radsrcsnkR = radsrcsnkR;
-  //   this->coefsrcsnkL = coefsrcsnkL;
-  //   this->coefsrcsnkR = coefsrcsnkR;
-  //   this->pullbackN = pullbackN;
-  //   this->neocls = neocls;
-  //   this->partwcut = partwcut;
-  //   this->profilename = profilename;
-
-  //   // Derived variables
-  //   nu_colstar = nu_colN / std::pow(std::sqrt(this->rc / this->rmaj), 3) *
-  //                std::sqrt(2.0) * equ.getQlocRt(this->rc, 0.0) * this->rmaj
-  //                * std::sqrt(this->mass / this->Tem);
-  //   // Set experimental n,T profiles
-  //   // this->particleClsReadProfile1d();
-  //   // Derived parameters
-  //   this->phitormin = 0.0;
-  //   this->phitormax = this->phitormin + 2 * M_PI / this->Nphimult;
-  //   this->phitorwid = this->phitormax - this->phitormin;
-
-  //   this->vtovN =
-  //       std::sqrt(this->Tem / this->mass); // Calculate thermal velocity
-  //   this->vparmaxovN = this->vparmaxovt * this->vtovN;
-  //   this->mumaxovN2 = std::pow(this->vparmaxovN, 2) / (2 * this->Bax);
-  //   this->vts = std::sqrt(this->Tem / this->mass);
-
-  //   this->particleClsMeanDens(equ, this->rmin, this->rmax, 100, 200,
-  //   this->Vtot,
-  //                             this->dens_intg, this->dens_mean,
-  //                             this->Stot);
-  //   this->Cp2g =
-  //       this->Vtot /
-  //       this->nptot_all; // 3d spline 2021/12/08; use NPTOT_ALL 2022/03/10!
-  //   this->Cp2g = this->Cp2g * this->nsonN * (-this->zcharge);
-  //   this->Cp2g = this->Cp2g * this->dens_mean;
-
-  //   this->Cp2g2d1f = this->Cp2g; // /this->phitorwid
-  //   if (rank == 0)
-  //     std::cout << "----set Cp2g2d1f=" << this->Cp2g2d1f
-  //               << ",Cp2g=" << this->Cp2g << ",phitorwid=" <<
-  //               this->phitorwid
-  //               << std::endl;
-  //   this->Cp2g1d = this->Vtot / this->nptot_all; // 1d spline 2022/08/18
-  //   this->Cp2g1d = this->Cp2g1d * this->nsonN * (-this->zcharge);
-  //   this->Cp2g1d = this->Cp2g1d * this->dens_mean;
-  //   this->Cp2g1d =
-  //       this->Cp2g1d / (4 * M_PI * M_PI * this->rmaj / this->Nphimult);
-
-  //   if (rank == 0)
-  //     std::cout << "  particle mean density=" << this->dens_mean <<
-  //     std::endl;
-
-  //   // vA^2=Cpoisson/Campere=1/betaN
-  //   wTAE = std::abs(0.5 / this->rmaj / equ.getQlocRt(this->rc, 0.0) *
-  //                   std::sqrt(1 / equ.betaN)); // from field_class
-  //   this->ant_w = ant_wowTAE * wTAE;
-  //   if (rank == 0)
-  //     std::cout << "ant_w=" << this->ant_w << ",wTAE=" << wTAE <<
-  //     std::endl;
-  //   for (int fic = 1; fic <= this->ant_lenm; ++fic) {
-  //     this->ant_m1d[fic - 1] = std::min(ant_m0, ant_m1) - 1 + fic;
-  //   }
-  //   if (rank == 0) {
-  //     std::cout << "lenm=" << this->ant_lenm << ", ant_m1d=";
-  //     for (const auto &val : this->pert_m1d) {
-  //       std::cout << val << " ";
-  //     }
-  //     std::cout << std::endl;
-  //   }
-
-  //   // (Rhots only as diagnosis)
-  //   this->rhots =
-  //       this->rhotN * std::sqrt(this->Tem * this->mass) / this->zcharge;
-  //   this->paux_T_transit = std::abs(2.0 * M_PI * equ.getQlocRt(this->rc,
-  //   0.0) *
-  //                                   equ.rmaxis / this->vts);
-
-  //   if (rank == 0) {
-  //     sform_r =
-  //     "(A14,e12.5,A10,e12.5,A10,e12.5,A10,e12.5,A10,e12.5,A10,e12.5)";
-  //     sform_i = "(A14,I10,A14,I10,A14,I10,A14,I10,A14,I10,A14,I10)";
-
-  //     std::cout << "imixvar=" << this->imixvar
-  //               << ",ibc_particle=" << this->ibc_particle
-  //               << ",sp_id=" << this->sp_id << ","
-  //               << "ideltaf=" << this->ideltaf << ",Nphimult=" <<
-  //               this->Nphimult
-  //               << ",nptot=" << this->nptot << ","
-  //               << "nptot_all=" << this->nptot_all
-  //               << ",idensprof=" << this->idensprof
-  //               << ", iTemprof=" << this->iTemprof << ","
-  //               << "ntrack=" << this->ntrack << ",ifilter=" <<
-  //               this->ifilter
-  //               << ",pert_scheme=" << this->pert_scheme << ","
-  //               << "v_par0=" << this->v_par0 << ",v_d=" << this->v_d
-  //               << ",v_mirror=" << this->v_mirror << ","
-  //               << "irec_track=" << this->irec_track
-  //               << ",irec_Eparticle=" << this->irec_Eparticle
-  //               << ",irec_converge=" << this->irec_converge << ","
-  //               << " filter_nc=" << this->filter_nc
-  //               << " ischeme_motion=" << this->ischeme_motion
-  //               << " ngyro=" << this->ngyro << " irandom_gy" <<
-  //               this->irandom_gy
-  //               << ","
-  //               << " ibc_particle=" << this->ibc_particle
-  //               << " load_can=" << this->load_can
-  //               << " ischeme_load=" << this->ischeme_load << ","
-  //               << " pert_nmin=" << this->pert_nmin
-  //               << " pert_nmax=" << this->pert_nmax
-  //               << " pert_nstride=" << this->pert_nstride << ","
-  //               << " pullbackN=" << this->pullbackN
-  //               << " neocls=" << this->neocls << ", icol=" << this->icol
-  //               << ", iset_zerosumw=" << this->iset_zerosumw << std::endl;
-
-  //     std::cout
-  //         << "phitormin=" << this->phitormin << ",phitormax=" <<
-  //         this->phitormax
-  //         << ",phitorwid=" << this->phitorwid << ","
-  //         << "nsonN=" << this->nsonN << ",Tem=" << this->Tem
-  //         << ",mass=" << this->mass << ","
-  //         << "zcharge=" << this->zcharge << ",vparmaxovt=" <<
-  //         this->vparmaxovt
-  //         << ",vparmaxovN=" << this->vparmaxovN << ","
-  //         << "vtovN=" << this->vtovN << ",c1=" << this->dens_coef1d[0]
-  //         << ",c2=" << this->dens_coef1d[1] << ","
-  //         << "c3=" << this->dens_coef1d[2] << ",c4=" <<
-  //         this->dens_coef1d[3]
-  //         << ",c1T=" << this->Tem_coef1d[0] << ","
-  //         << "c2T=" << this->Tem_coef1d[1] << ",c3T=" <<
-  //         this->Tem_coef1d[2]
-  //         << ",c4T=" << this->Tem_coef1d[3] << ","
-  //         << "Bax=" << this->Bax << ","
-  //         << "rmin=" << this->rmin << ",rmax=" << this->rmax
-  //         << ",Stot=" << this->Stot << ","
-  //         << "Vtot=" << this->Vtot << ",aminor=" << this->aminor
-  //         << ",rmaj=" << this->rmaj << ","
-  //         << "rwid=" << this->rwid << ",rmid=" << this->rmid
-  //         << ",rc=" << this->rc << ","
-  //         << "rhots=" << this->rhots << ",rhotN=" << this->rhotN
-  //         << ",Cp2g=" << this->Cp2g << ","
-  //         << "vts=" << this->vts << "paux_T_tr=" << this->paux_T_transit <<
-  //         ","
-  //         << "pert_rc=" << this->pert_rc << ",pert_rwid=" <<
-  //         this->pert_rwid
-  //         << ",pertamp=" << this->pertamp << ","
-  //         << "dens_mean=" << this->dens_mean << ",Cp2g1d=" << this->Cp2g1d
-  //         << ",nu_colN=" << this->nu_colN << ","
-  //         << "nu_colstar=" << nu_colstar << ",pert_thetac=" <<
-  //         this->pert_thetac
-  //         << ",pert_thetawid=" << this->pert_thetawid << ","
-  //         << "pert_lr=" << this->pert_lr << ",partwcut=" << this->partwcut
-  //         << std::endl;
-
-  //     std::cout << "isrcsnk=" << this->isrcsnk << std::endl;
-  //     std::cout << "radsrcsnkL=" << this->radsrcsnkL[0] << ","
-  //               << this->radsrcsnkL[1]
-  //               << ",coefsrcsnkL=" << this->coefsrcsnkL[0] << ","
-  //               << this->coefsrcsnkL[1] << "," << this->coefsrcsnkL[2]
-  //               << std::endl;
-  //     std::cout << "radsrcsnkR=" << this->radsrcsnkR[0] << ","
-  //               << this->radsrcsnkR[1]
-  //               << ",coefsrcsnkR=" << this->coefsrcsnkR[0] << ","
-  //               << this->coefsrcsnkR[1] << "," << this->coefsrcsnkR[2]
-  //               << std::endl;
-  //     std::cout << "iuseprv=" << this->iuseprv << std::endl;
-  //   }
-
-  // void readInput(const std::string &inputFile) {
-  //   INIReader reader(inputFile);
-
-  //   // Check if reading was successful
-  //   if (reader.ParseError() < 0) {
-  //     throw std::runtime_error("Error: Unable to open or parse input file '"
-  //     +
-  //                              inputFile + "'");
-  //   }
-
-  //   // Read key-value pairs
-  //   iequmodel = reader.GetInteger("Particle", "iequmodel", 2);
-  //   c1adhoc = reader.GetReal("Particle", "c1adhoc", 0.0);
-  //   c2adhoc = reader.GetReal("Particle", "c2adhoc", 0.0);
-  //   rmaxis_adhoc = reader.GetReal("Particle", "rmaxis_adhoc", 0.0);
-  //   Bmaxis_adhoc = reader.GetReal("Particle", "Bmaxis_adhoc", 0.0);
-  //   set_zerof = reader.GetBoolean("Particle", "set_zerof", false);
-  //   fname = reader.Get("Particle", "fname", "");
-  //   profilename = reader.Get("Particle", "profilename", "");
-
-  //   // Optional: Add validation and other logic
-  //   validateInputs();
-  // }
 
   void particle_cls_link2eq(const Equilibrium &equ) {
     Bax = std::abs(equ.Bmaxis); // note sign!
     aminor = equ.rdim / 2;
     rmaj = equ.rmaxis;
     rhotN = equ.rhoN;
+  }
+
+  void random_seed() {
+    // Initialize random seed
+    srand(time(0));
+  }
+
+  void random_number(std::vector<double> &vec) {
+    for (auto &v : vec) {
+      v = static_cast<double>(rand()) / RAND_MAX;
+    }
+  }
+
+  double getTem1d(double radius) {
+    // Implement function to get temperature based on radius
+    return 1.0; // Placeholder
+  }
+
+  double getdens1d(double radius) {
+    // Implement function to get density
+    return 1.0; // Placeholder
+  }
+
+  double getdens1d_can(Equilibrium &equ, double radius, double theta,
+                       double vpar, double mu) {
+    // Implement function to get canonical density
+    return 1.0; // Placeholder
+  }
+
+  double gennor(double mu, double sigma) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<> dis(mu, sigma);
+    return dis(gen);
+  }
+
+  double particle_cls_getf0(double partrad, double parttheta, double partvpar,
+                            double partmu, Equilibrium &equ) {
+    // Implement function to get f0
+    return 1.0; // Placeholder
+  }
+
+  void lgwt(int n, double a, double b, std::vector<double> &x1d,
+            std::vector<double> &w1d) {
+    if (n <= 1) {
+      throw std::invalid_argument("lgwt Error: n must be greater than 1");
+    }
+    if (static_cast<int>(x1d.size()) != n) {
+      throw std::invalid_argument("lgwt Error: x1d must have a size of n.");
+    }
+    if (static_cast<int>(w1d.size()) != n) {
+      throw std::invalid_argument("lgwt Error: w1d must have a size of n.");
+    }
+    const double eps = std::numeric_limits<double>::epsilon();
+
+    int n0 = n - 1;
+    int n1 = n0 + 1;
+    int n2 = n0 + 2;
+
+    // Allocate memory for dynamic arrays
+    std::vector<double> xu(n1);
+    std::vector<double> y(n1), Lp(n1);
+    // n1 X n2, initial L=0.0
+    std::vector<std::vector<double>> L(n1, std::vector<double>(n2, 0.0));
+    std::vector<double> y0(n1, 2.0);
+
+    // Initial guess
+    for (int i = 0; i < n1; ++i) {
+      xu[i] = -1.0 + 2.0 * i / (n1 - 1.0);
+      y[i] = std::cos((2.0 * i + 1.0) * M_PI / (2.0 * n0 + 2.0)) +
+             (0.27 / n1) * std::sin(M_PI * xu[i] * n0 / n2);
+    }
+    //  Legendre-Gauss Vandermonde Matrix, L(n1,n2) and Lp(n1)
+    //   Compute the zeros of the N+1 Legendre Polynomial
+    // using the recursion relation and the Newton-Raphson method
+    //  Iterate until new points are uniformly within epsilon of old points
+    while (true) {
+      // Compute the maximum absolute difference between y and y0
+      double max_diff = 0.0;
+      for (int i = 0; i < n1; ++i) {
+        max_diff = std::max(max_diff, std::abs(y[i] - y0[i]));
+      }
+
+      // Exit the loop if the difference is smaller than epsilon
+      if (max_diff <= eps) {
+        break;
+      }
+
+      // Initialize Legendre-Gauss Vandermonde Matrix
+      for (int i = 0; i < n1; ++i) {
+        L[i][0] = 1.0;
+        L[i][1] = y[i];
+      }
+
+      for (int k = 1; k < n1; ++k) {
+        for (int i = 0; i < n1; ++i) {
+          L[i][k + 1] =
+              ((2.0 * k + 1.0) * y[i] * L[i][k] - k * L[i][k - 1]) / (k + 1);
+        }
+      }
+
+      // Derivative of Legendre polynomial
+      for (int i = 0; i < n1; ++i) {
+        Lp[i] = n2 * (L[i][n1 - 1] - y[i] * L[i][n2 - 1]) / (1.0 - y[i] * y[i]);
+      }
+
+      // Update y0 and y
+      y0 = y;
+      for (int i = 0; i < n1; ++i) {
+        y[i] = y0[i] - L[i][n2 - 1] / Lp[i];
+      }
+    }
+
+    // Compute x1d and w1d
+    double n2_o_n1 = static_cast<double>(n2) / n1;
+    for (int i = 0; i < n; ++i) {
+      x1d[i] = (a * (1.0 - y[i]) + b * (1.0 + y[i])) / 2.0;
+      w1d[i] =
+          (b - a) / ((1.0 - y[i] * y[i]) * Lp[i] * Lp[i]) * n2_o_n1 * n2_o_n1;
+    }
+
+    // Reverse x1d and w1d, then x1d is in ascending order
+    std::reverse(x1d.begin(), x1d.end());
+    std::reverse(w1d.begin(), w1d.end());
+  }
+
+  void particle_cls_mean_dens(const Equilibrium &equ, double rmin, double rmax,
+                              int nrad, int nthe, double &volume,
+                              double &int_dens, double &mean_dens,
+                              double &Stot) {
+    // Working variables
+    std::vector<double> xrad(nrad), wrad(nrad);
+    std::vector<double> xthe(nthe), wthe(nthe);
+
+    // Initialize outputs
+    mean_dens = 0.0;
+    int_dens = 0.0;
+    volume = 0.0;
+    Stot = 0.0;
+
+    // Compute quadrature points and weights
+    std::cout << "Computing quadrature points and weights...\n";
+    std::cout << "rmin=" << rmin << ", rmax=" << rmax << std::endl;
+    std::cout << "nrad=" << nrad << ", nthe=" << nthe << std::endl;
+    std::cout << "xrad.size()=" << xrad.size()
+              << ", xthe.size()=" << xthe.size() << std::endl;
+    std::cout << "wrad.size()=" << wrad.size()
+              << ", wthe.size()=" << wthe.size() << std::endl;
+    std::cout << " this->phitorwid=" << this->phitorwid << std::endl;
+    lgwt(nrad, rmin, rmax, xrad, wrad);
+    double twopi = 2.0 * M_PI;
+    lgwt(nthe, 0.0, twopi, xthe, wthe);
+
+    // Debug output (assuming rank == 0)
+    std::cout << "sum(wrad) = "
+              << std::accumulate(wrad.begin(), wrad.end(), 0.0)
+              << ", sum(wthe) = "
+              << std::accumulate(wthe.begin(), wthe.end(), 0.0) << std::endl;
+    std::cout << "mean(xrad) = "
+              << std::accumulate(xrad.begin(), xrad.end(), 0.0) / nrad
+              << ", mean(xthe) = "
+              << std::accumulate(xthe.begin(), xthe.end(), 0.0) / nthe
+              << std::endl;
+
+    // Nested loop for computation
+    for (int fic = 0; fic < nrad; ++fic) {
+      for (int fjc = 0; fjc < nthe; ++fjc) {
+        double w12 = wrad[fic] * wthe[fjc];
+        double jaco2 = equ.getjaco2(xrad[fic], xthe[fjc]);
+        double jaco3 = jaco2 * equ.getR(xrad[fic], xthe[fjc]);
+
+        volume += w12 * jaco3;
+        int_dens += w12 * jaco3 * this->getdens1d(xrad[fic]);
+        Stot += w12 * jaco2;
+      }
+    }
+
+    // Final adjustments
+    volume = std::abs(volume) * this->phitorwid;
+    int_dens = std::abs(int_dens) * this->phitorwid;
+    Stot = std::abs(Stot);
+
+    // Compute mean density
+    mean_dens = int_dens / volume;
+  }
+
+  void particle_cls_set_parms(Equilibrium &equ, ParticleSpecies &species,
+                              int rank) {
+
+    // Initialize default values
+    ischeme_motion = 2;
+    ngyro = 1;
+    irandom_gy = 1;
+    iuseprv = false;
+
+    isrcsnk = 0;
+    radsrcsnkL = {0.0, 0.1};
+    radsrcsnkR = {0.9, 1.0};
+    coefsrcsnkL = {0.0, 0.0, 0.0};
+    coefsrcsnkR = {0.0, 0.0, 0.0};
+
+    partwcut = 1e-1;
+
+    pullbackN = 1;
+    neocls = 0;
+
+    // Set Run Parameters
+    // int ifile = 101;
+    // std::ifstream infile("input");
+    // if (!infile.is_open()) {
+    //   std::cerr << "Failed to open input file." << std::endl;
+    //   return;
+    // }
+    // for (int fic = 1; fic <= sp_id; ++fic) {
+    //   // Read namelist variables from file
+    //   // This requires parsing logic based on the file structure
+    //   // Placeholder for reading logic
+    // }
+    // infile.close();
+
+    // Marker
+    int nptot = species.getNptot();
+    int nptot_all = species.getNptotAll();
+    double mass = species.getMass();
+    double zcharge = species.getCharge();
+    double nsonN = species.getNsonN();
+    double rmin = species.rmin;
+    double rmax = species.rmax;
+    double Tem = species.getTem();
+
+    // std::cout << "Species " << sp_id << ", nptot=" << nptot << std::endl;
+
+    ischeme_motion = ischeme_motion;
+    ngyro = ngyro;
+    irandom_gy = irandom_gy;
+    imixvar = imixvar;
+    ideltaf = ideltaf;
+    // Physics
+    vparmaxovt = vparmaxovt;
+    // Perturbation
+    pert_rc = pert_rc;
+    pert_rwid = pert_rwid;
+    pert_thetac = pert_thetac;
+    pert_thetawid = pert_thetawid;
+    pertamp = pertamp;
+    pert_lr = pert_lr;
+    pert_m0 = pert_m0;
+    pert_m1 = pert_m1;
+    pert_nc = pert_nc;
+    pert_nmin = pert_nmin;
+    pert_nmax = pert_nmax;
+    pert_nstride = pert_nstride;
+    pert_scheme = pert_scheme;
+    pert_lenm = std::abs(pert_m0 - pert_m1) + 1;
+    pert_m1d.resize(pert_lenm);
+    int min_pert_m = std::min(pert_m0, pert_m1);
+    for (int fic = 0; fic < pert_lenm; ++fic) {
+      pert_m1d[fic] = min_pert_m - 1 + (fic + 1);
+    }
+    if (rank == 0) {
+      std::cout << "lenm=" << pert_lenm << ", pert_m1d=";
+      for (const auto &val : pert_m1d) {
+        std::cout << val << " ";
+      }
+      std::cout << std::endl;
+    }
+
+    // Antenna
+    ant_rc = 0.5;
+    ant_rwid = 0.125;
+    antamp = 1e-5;
+    double ant_wowTAE = 1.0;
+    ant_scheme = 3;
+    ant_m0 = -11;
+    ant_m1 = -10;
+    ant_nc = 6;
+
+    ant_lenm = std::abs(ant_m0 - ant_m1) + 1;
+    ant_m1d.resize(ant_lenm);
+    int min_ant_m = std::min(ant_m0, ant_m1);
+    for (int fic = 0; fic < ant_lenm; ++fic) {
+      ant_m1d[fic] = min_ant_m - 1 + (fic + 1);
+    }
+    if (rank == 0) {
+      std::cout << "lenm=" << ant_lenm << ", ant_m1d=";
+      for (const auto &val : ant_m1d) {
+        std::cout << val << " ";
+      }
+      std::cout << std::endl;
+    }
+
+    // Density and Temperature Profiles
+    idensprof = 1;
+    iTemprof = 1;
+    load_can = 0;
+    ischeme_load = 1;
+    // Assuming dens_coef1d and Tem_coef1d are already populated
+    // If not, they should be read from inputs or initialized here
+    rwid = rmax - rmin;
+    rmid = (rmin + rmax) / 2.0;
+    rc = rmid;
+
+    ifilter = ifilter;
+    filter_nc = filter_nc;
+    filter_m0 = filter_m0;
+    filter_m1 = filter_m1;
+    int nlen_filter = std::abs(filter_m1 - filter_m0) + 1;
+    if (rank == 0) {
+      std::cout << "nlen=" << nlen_filter << std::endl;
+    }
+
+    std::vector<int> filter_m1d(nlen_filter);
+    int min_filter_m = std::min(filter_m0, filter_m1);
+    for (int fic = 0; fic < nlen_filter; ++fic) {
+      filter_m1d[fic] = min_filter_m + fic;
+    }
+    if (rank == 0) {
+      std::cout << " filter_m1d=";
+      for (const auto &val : filter_m1d) {
+        std::cout << val << " ";
+      }
+      std::cout << std::endl;
+    }
+
+    Nphimult = Nphimult;
+    // Control variables
+    v_par0 = v_par0;
+    v_d = v_d;
+    v_mirror = v_mirror;
+    v_ExB = v_ExB;
+    v_Epar = v_Epar;
+    idwdt = idwdt;
+
+    irec_track = irec_track;
+    irec_Eparticle = irec_Eparticle;
+    irec_converge = irec_converge;
+    iuseprv = iuseprv;
+
+    ibc_particle = ibc_particle;
+    iset_zerosumw = iset_zerosumw;
+
+    isrcsnk = isrcsnk;
+    radsrcsnkL = radsrcsnkL;
+    radsrcsnkR = radsrcsnkR;
+    coefsrcsnkL = coefsrcsnkL;
+    coefsrcsnkR = coefsrcsnkR;
+    pullbackN = pullbackN;
+    neocls = neocls;
+    partwcut = partwcut;
+    profilename = profilename;
+
+    // Derived variables
+    double nu_colstar = nu_colN / std::pow(std::sqrt(rc / rmaj), 3) *
+                        std::sqrt(2.0) * equ.getqloc_rt(rc, 0.0) * rmaj *
+                        std::sqrt(mass / Tem);
+    // Set experimental n,T profiles
+    // particle_cls_read_profile1d();
+    // Derived parameters
+    phitormin = 0.0;
+    phitormax = phitormin + 2.0 * M_PI / static_cast<double>(Nphimult);
+    phitorwid = phitormax - phitormin;
+
+    vtovN = std::sqrt(Tem / mass); // calculate thermal velocity
+    vparmaxovN = vparmaxovt * vtovN;
+    std::cout << "vparmaxovN=" << vparmaxovN << std::endl;
+    mumaxovN2 = std::pow(vparmaxovN, 2) / (2.0 * Bax);
+    std::cout << "mumaxovN2=" << mumaxovN2 << std::endl;
+    vts = std::sqrt(Tem / mass);
+    // --
+    // // test lgwt
+    // std::vector<double> xrad_test(10), wrad_test(10);
+    // lgwt(10, 0.2, 0.8, xrad_test, wrad_test);
+    // for (int i = 0; i < 10; i++) {
+    //   std::cout << "xrad_test[" << i << "]=" << xrad_test[i] << ", wrad_test["
+    //             << i << "]=" << wrad_test[i] << std::endl;
+    // }
+
+    this->particle_cls_mean_dens(equ, this->rmin, this->rmax, 100, 200,
+                                 this->Vtot, this->dens_intg, this->dens_mean,
+                                 this->Stot);
+    std::cout << "Vtot=" << Vtot << ", dens_intg=" << dens_intg
+              << ", dens_mean=" << dens_mean << ", Stot=" << Stot << std::endl;
+    // this->Stot = M_PI * (std::pow(rmax, 2) - std::pow(rmin, 2));
+    // this->Vtot = this->Stot * this->rmaj * this->phitorwid;
+    Cp2g = Vtot /
+           static_cast<double>(
+               nptot_all); // 3d spline 2021/12/08; use NPTOT_ALL 2022/03/10!
+    Cp2g *= nsonN * (-zcharge);
+    Cp2g *= dens_mean;
+
+    Cp2g2d1f = Cp2g; // / phitorwid;
+    if (rank == 0) {
+      std::cout << "----set Cp2g2d1f=" << Cp2g2d1f << ", Cp2g=" << Cp2g
+                << ", phitorwid=" << phitorwid << std::endl;
+    }
+    Cp2g1d = Vtot / static_cast<double>(nptot_all); // 1d spline 2022/08/18
+    Cp2g1d *= nsonN * (-zcharge);
+    Cp2g1d *= dens_mean;
+    Cp2g1d /= (4.0 * std::pow(M_PI, 2) * rmaj / static_cast<double>(Nphimult));
+
+    if (rank == 0) {
+      std::cout << "  particle mean density=" << dens_mean << std::endl;
+    }
+
+    // vA^2 = Cpoisson/Campere = 1/betaN
+    double wTAE = std::abs(0.5 / rmaj / equ.getqloc_rt(rc, 0.0) *
+                           std::sqrt(1.0 / equ.betaN)); // from field_class
+    ant_w = ant_wowTAE * wTAE;
+    if (rank == 0) {
+      std::cout << "ant_w=" << ant_w << ", wTAE=" << wTAE << std::endl;
+    }
+    for (int fic = 0; fic < ant_lenm; ++fic) {
+      ant_m1d[fic] = std::min(ant_m0, ant_m1) - 1 + (fic + 1);
+    }
+    if (rank == 0) {
+      std::cout << "lenm=" << ant_lenm << ", ant_m1d=";
+      for (const auto &val : ant_m1d) {
+        std::cout << val << " ";
+      }
+      std::cout << std::endl;
+    }
+
+    // (Rhots only as diagnosis)
+    rhots = rhotN * std::sqrt(Tem * mass) / zcharge;
+    paux_T_transit =
+        std::abs(2.0 * M_PI * equ.getqloc_rt(rc, 0.0) * equ.rmaxis / vts);
+
+    if (rank == 0) {
+      std::string sform_r =
+          "(A14,e12.5,A10,e12.5,A10,e12.5,A10,e12.5,A10,e12.5,A10,e12.5)";
+      std::string sform_i = "(A14,I10,A14,I10,A14,I10,A14,I10,A14,I10,A14,I10)";
+
+      // Since C++ doesn't support formatted write like Fortran, we use
+      // std::cout with appropriate formatting
+      std::cout << std::fixed << std::setprecision(5);
+      std::cout << "imixvar=" << imixvar << ", ibc_particle=" << ibc_particle
+                << ", sp_id=" << sp_id << ", ideltaf=" << ideltaf
+                << ", Nphimult=" << Nphimult << ", nptot=" << nptot
+                << ", nptot_all=" << nptot_all << ", idensprof=" << idensprof
+                << ", iTemprof=" << iTemprof << ", ntrack=" << irec_track
+                << ", ifilter=" << ifilter << ", pert_scheme=" << pert_scheme
+                << ", v_par0=" << v_par0 << ", v_d=" << v_d
+                << ", v_mirror=" << v_mirror << ", irec_track=" << irec_track
+                << ", irec_Eparticle=" << irec_Eparticle
+                << ", irec_converge=" << irec_converge
+                << ", filter_nc=" << filter_nc
+                << ", ischeme_motion=" << ischeme_motion << ", ngyro=" << ngyro
+                << ", irandom_gy=" << irandom_gy
+                << ", ibc_particle=" << ibc_particle
+                << ", load_can=" << load_can
+                << ", ischeme_load=" << ischeme_load
+                << ", pert_nmin=" << pert_nmin << ", pert_nmax=" << pert_nmax
+                << ", pert_nstride=" << pert_nstride
+                << ", pullbackN=" << pullbackN << ", neocls=" << neocls
+                << ", icol=" << icol << ", iset_zerosumw=" << iset_zerosumw
+                << std::endl;
+
+      std::cout << "phitormin=" << phitormin << ", phitormax=" << phitormax
+                << ", phitorwid=" << phitorwid << ", nsonN=" << nsonN
+                << ", Tem=" << Tem << ", mass=" << mass
+                << ", zcharge=" << zcharge << ", vparmaxovt=" << vparmaxovt
+                << ", vparmaxovN=" << vparmaxovN << ", vtovN=" << vtovN
+                << ", c1=" << dens_coef1d[0] << ", c2=" << dens_coef1d[1]
+                << ", c3=" << dens_coef1d[2] << ", c4=" << dens_coef1d[3]
+                << ", c1T=" << Tem_coef1d[0] << ", c2T=" << Tem_coef1d[1]
+                << ", c3T=" << Tem_coef1d[2] << ", c4T=" << Tem_coef1d[3]
+                << ", Bax=" << Bax << ", rmin=" << rmin << ", rmax=" << rmax
+                << ", Stot=" << Stot << ", Vtot=" << Vtot
+                << ", aminor=" << 0.0 // Assuming aminor is defined elsewhere
+                << ", rmaj=" << rmaj << ", rwid=" << rwid << ", rmid=" << rmid
+                << ", rc=" << rc << ", rhots=" << rhots << ", rhotN=" << rhotN
+                << ", Cp2g=" << Cp2g << ", vts=" << vts
+                << ", paux_T_tr=" << paux_T_transit << ", pert_rc=" << pert_rc
+                << ", pert_rwid=" << pert_rwid << ", pertamp=" << pertamp
+                << ", dens_mean=" << dens_mean << ", Cp2g1d=" << Cp2g1d
+                << ", nu_colN=" << nu_colN << ", nu_colstar=" << nu_colstar
+                << ", pert_thetac=" << pert_thetac
+                << ", pert_thetawid=" << pert_thetawid
+                << ", pert_lr=" << pert_lr << ", partwcut=" << partwcut
+                << std::endl;
+
+      std::cout << "isrcsnk=" << isrcsnk << std::endl;
+      std::cout << "radsrcsnkL=";
+      for (const auto &val : radsrcsnkL) {
+        std::cout << val << " ";
+      }
+      std::cout << ", coefsrcsnkL=";
+      for (const auto &val : coefsrcsnkL) {
+        std::cout << val << " ";
+      }
+      std::cout << std::endl;
+
+      std::cout << "radsrcsnkR=";
+      for (const auto &val : radsrcsnkR) {
+        std::cout << val << " ";
+      }
+      std::cout << ", coefsrcsnkR=";
+      for (const auto &val : coefsrcsnkR) {
+        std::cout << val << " ";
+      }
+      std::cout << std::endl;
+      std::cout << "iuseprv=" << iuseprv << std::endl;
+    }
+  }
+
+  void particle_cls_loadmarker(Equilibrium &equ, ParticleSpecies &species) {
+    std::cout << "--------LOAD MARKER--------" << std::endl;
+
+    auto &coords = species.getCoords();
+    auto &partrad = coords.partrad;
+    auto &parttheta = coords.parttheta;
+    auto &partphitor = coords.partphitor;
+    auto &partvpar = coords.partvpar;
+    auto &partw = coords.partw;
+
+    auto &partmu = species.partmu;
+    auto &partfog = species.partfog;
+    auto &partg0 = species.partg0;
+    int nptot = species.getNptot();
+
+    const double mass = species.getMass();
+
+    // Init Random
+    random_seed();
+    random_number(partrad);
+    std::cout << "partrad[0]: " << partrad[0] << std::endl;
+
+    double c0rnd, c1rnd;
+    double Tpar, Tperp, zwidprod, BB;
+    int fic;
+
+    if (ischeme_load == 1) {
+      for (fic = 0; fic < nptot; ++fic) {
+        c0rnd = rmin * rmin;
+        c1rnd = rmax * rmax - rmin * rmin;
+        partrad[fic] = sqrt(partrad[fic] * c1rnd + c0rnd);
+      }
+    } else if (ischeme_load == 2) {
+      for (fic = 0; fic < nptot; ++fic) {
+        partrad[fic] = partrad[fic] * rwid + rmin;
+      }
+    }
+
+    // 2.3 Theta, Phitor
+    random_number(parttheta);
+    random_number(partphitor);
+    for (fic = 0; fic < nptot; ++fic) {
+      parttheta[fic] = parttheta[fic] * 2.0 * M_PI;
+      partphitor[fic] = partphitor[fic] * phitorwid + phitormin;
+    }
+    std::cout << "parttheta[0]: " << parttheta[0] << std::endl;
+    // 4. Vpar
+    double vpar0 = 0.0;
+    double rndmu4 = vpar0;
+    double rndsd4;
+    for (fic = 0; fic < nptot; ++fic) {
+      Tpar = getTem1d(partrad[fic]);
+      rndsd4 = sqrt(Tpar / mass) * sqrt(1.0 / 2.0);
+      double rndf8 = gennor(rndmu4, rndsd4);
+      while (abs(rndf8) >= vparmaxovN) {
+        rndf8 = gennor(rndmu4, rndsd4);
+      }
+      partvpar[fic] = rndf8;
+    }
+    std::cout << "partvpar[0]: " << partvpar[0] << std::endl;
+    // 5. Mu
+    zwidprod = phitorwid * rwid * 2.0 * M_PI;
+
+    for (fic = 0; fic < nptot; ++fic) {
+      Tperp = getTem1d(partrad[fic]);
+      double rndf8 = static_cast<double>(rand()) / RAND_MAX;
+
+      BB = equ.getB(partrad[fic], parttheta[fic]);
+      // std::cout << "partmu[" << fic << "]: " << partmu[fic] << std::endl;
+
+      partmu[fic] = -Tperp / mass * std::log(rndf8) / BB / 2.0;
+
+      while (partmu[fic] >= mumaxovN2) {
+        rndf8 = static_cast<double>(rand()) / RAND_MAX;
+        partmu[fic] = -Tperp / mass * std::log(rndf8) / BB / 2.0;
+      }
+      
+      // 1b. full weight
+      if (load_can == 0) {
+        partfog[fic] = getdens1d(partrad[fic]) / dens_mean;
+      } else if (load_can == 1) {
+        partfog[fic] = getdens1d_can(equ, partrad[fic], parttheta[fic],
+                                     partvpar[fic], partmu[fic]) /
+                       dens_mean;
+      }
+
+      if (ischeme_load == 1) {
+        partfog[fic] *= equ.getjaco3(partrad[fic], parttheta[fic]) * zwidprod /
+                        Vtot * rmid / partrad[fic];
+      } else if (ischeme_load == 2) {
+        partfog[fic] *=
+            equ.getjaco3(partrad[fic], parttheta[fic]) * zwidprod / Vtot;
+      } else {
+        std::cerr << "Error: wrong ISCHEME_LOAD value; set to 1" << std::endl;
+      }
+
+      // 1a. weight
+      if (ideltaf > 0) {
+        partw[fic] = 0.0;
+      } else if (ideltaf == 0) {
+        partw[fic] = partfog[fic];
+      } else {
+        std::cerr << "Error: wrong IDELTAF value; set to 1" << std::endl;
+      }
+
+      if (ideltaf == 3) {
+        partg0[fic] = particle_cls_getf0(partrad[fic], parttheta[fic],
+                                         partvpar[fic], partmu[fic], equ) /
+                      partfog[fic];
+      }
+
+    std::cout << "partmu[" << fic << "]: " << partmu[fic] << std::endl;  
+    }
   }
 };
 

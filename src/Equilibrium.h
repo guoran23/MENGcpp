@@ -19,6 +19,7 @@ private:
     double aminor;
     double qbar_axis;
     double qbar_edge;
+
     void validateInputs()
     {
         if (iequmodel <= 0)
@@ -69,6 +70,9 @@ public:
         fname = reader.Get("Equilibrium", "fname", "");
         profilename = reader.Get("Equilibrium", "profilename", "");
 
+        rmaxis = rmaxis_adhoc;  
+        Bmaxis = Bmaxis_adhoc;
+
         // Optional: Add validation and other logic
         validateInputs();
     }
@@ -85,7 +89,7 @@ public:
                   << "profilename: " << profilename << "\n";
     }
     // ---------------------------------------------------------
-    double get_qbar(double rho)
+    double get_qbar(double rho) const
     {
         double qbar = c1adhoc + c2adhoc * rho * rho;
         return qbar;
@@ -160,31 +164,31 @@ public:
     void equil_cls_calc_derived();
 
     // (R,Z) functions
-    double getradRZ(double R, double Z);
-    double gettheRZ(double R, double Z);
+    double getradRZ(double R, double Z) const;
+    double gettheRZ(double R, double Z) const;
 
     // (rad,the) functions
-    double getBdirect(double rad, double the);
-    double getBrad_co_direct(double rad, double the);
-    double getBthe_co_direct(double rad, double the);
-    double getB(double rad, double the);
-    double getdBdrad(double rad, double the);
-    double getdBdthe(double rad, double the);
-    double getBthe_ct(double rad, double the);
-    double getBphi_ct(double rad, double the);
-    double getcurlbrad_ct(double rad, double the);
-    double getcurlbthe_ct(double rad, double the);
-    double getcurlbphi_ct(double rad, double the);
+    double getBdirect(double rad, double the) const;
+    double getBrad_co_direct(double rad, double the) const;
+    double getBthe_co_direct(double rad, double the) const;
+    double getB(double rad, double the) const;
+    double getdBdrad(double rad, double the) const;
+    double getdBdthe(double rad, double the) const;
+    double getBthe_ct(double rad, double the) const;
+    double getBphi_ct(double rad, double the) const;
+    double getcurlbrad_ct(double rad, double the) const;
+    double getcurlbthe_ct(double rad, double the) const;
+    double getcurlbphi_ct(double rad, double the) const;
 
     // for Rho* terms of GC motion
-    double getBrad_co(double rad, double the);
-    double getBthe_co(double rad, double the);
-    double getBphi_co(double rad, double the);
-    double getdBrad_codrad(double rad, double the);
-    double getdBrad_codthe(double rad, double the);
-    double getdBthe_codrad(double rad, double the);
-    double getdBthe_codthe(double rad, double the);
-    double geth_adhoc(double rad, double the, double rmaxis);
+    double getBrad_co(double rad, double the) const;
+    double getBthe_co(double rad, double the) const;
+    double getBphi_co(double rad, double the) const;
+    double getdBrad_codrad(double rad, double the) const;
+    double getdBrad_codthe(double rad, double the) const;
+    double getdBthe_codrad(double rad, double the) const;
+    double getdBthe_codthe(double rad, double the) const;
+    double geth_adhoc(double rad, double the, double rmaxis) const;
 
     void calc_curlb_ct_direct(double rad, double the);
 
@@ -196,24 +200,24 @@ public:
     double getgij_fa(double rad, double the, double phi);
     double getgij_rtp(double rad, double the, double phi);
 
-    double getR(double rad, double the);
-    double getZ(double rad, double the);
-    double getdRdrad(double rad, double the);
-    double getdZdrad(double rad, double the);
-    double getdRdthe(double rad, double the);
-    double getdZdthe(double rad, double the);
+    double getR(double rad, double the) const;
+    double getZ(double rad, double the) const;
+    double getdRdrad(double rad, double the) const;
+    double getdZdrad(double rad, double the) const;
+    double getdRdthe(double rad, double the) const;
+    double getdZdthe(double rad, double the) const;
     void calcdrtdRZ(double rad, double the, double &drdR, double &drdZ,
-                    double &dtdR, double &dtdZ, double &jaco2);
+                    double &dtdR, double &dtdZ, double &jaco2) const;
 
-    double getjaco2(double rad, double the);
-    double getjaco3(double rad, double the);
+    double getjaco2(double rad, double the) const;
+    double getjaco3(double rad, double the) const;
 
-    double getqloc_rt(double rad, double the);
-    double getdqdrloc_rt(double rad, double the);
-    double getfpol_r(double rad);
-    double getdfpoldr_r(double rad);
-    double getdpsidr(double rad);
-    double getpsi(double rad);
+    double getqloc_rt(double rad, double the) const;
+    double getdqdrloc_rt(double rad, double the) const;
+    double getfpol_r(double rad) const;
+    double getdfpoldr_r(double rad) const;
+    double getdpsidr(double rad) const;
+    double getpsi(double rad) const;
 
     double geteta(double rad, double the, double phi);
     double getdetadrad(double rad, double the, double phi);
@@ -227,8 +231,8 @@ public:
 
     double getfeq();
 
-    double getcos_straight_adhoc(double rad, double the0, double rmaxis);
-    double getsin_straight_adhoc(double rad, double the0, double rmaxis);
+    double getcos_straight_adhoc(double rad, double the0, double rmaxis) const;
+    double getsin_straight_adhoc(double rad, double the0, double rmaxis) const;
 
     void equil_cls_showinfo(int rank);
 

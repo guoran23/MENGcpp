@@ -5,3 +5,6 @@ src/*.F90
 .vscode/*
 !.vscode/tasks.json
 !.vscode/launch.json
+
+inputfiles/*
+!inputfiles/input.ini

@@ -53,7 +53,7 @@ void Equilibrium::equil_cls_showinfo(int rank)
         std::cout << std::setw(14) << "fBphi=" << fBphi << '\n';
     }
 }
-double Equilibrium::getradRZ(double RR, double ZZ)
+double Equilibrium::getradRZ(double RR, double ZZ) const
 {
     double var = 0.0;
     int idx, idy, iflag = 0;
@@ -77,7 +77,7 @@ double Equilibrium::getradRZ(double RR, double ZZ)
     return var;
 }
 
-double Equilibrium::gettheRZ(double RR, double ZZ)
+double Equilibrium::gettheRZ(double RR, double ZZ) const
 {
     double var = 0.0;
     double rormaj = 0.0;
@@ -110,7 +110,7 @@ double Equilibrium::gettheRZ(double RR, double ZZ)
     return var;
 }
 void Equilibrium::calcdrtdRZ(double rad, double the, double &drdR, double &drdZ,
-                             double &dtdR, double &dtdZ, double &jaco2)
+                             double &dtdR, double &dtdZ, double &jaco2) const
 {
 
     double dRdrad, dRdthe, dZdrad, dZdthe, jacoinv;
@@ -172,7 +172,7 @@ void Equilibrium::calcBJgij(double rad, double the0, double &RR, double &ZZ,
 }
 
 // Function to calculate h_adhoc
-double Equilibrium::geth_adhoc(double rad, double the, double rmaxis)
+double Equilibrium::geth_adhoc(double rad, double the, double rmaxis) const
 {
     double rormaj = rad / rmaxis;
     double var = (1.0 - rormaj * rormaj) / (1.0 - rormaj * std::cos(the));
@@ -180,7 +180,7 @@ double Equilibrium::geth_adhoc(double rad, double the, double rmaxis)
 }
 
 // Function to calculate Bthe_ct
-double Equilibrium::getBthe_ct(double rad, double the0)
+double Equilibrium::getBthe_ct(double rad, double the0) const
 {
     double var = 0.0;
     double drdR, drdZ, dtdR, dtdZ, jaco2, RR;
@@ -203,7 +203,7 @@ double Equilibrium::getBthe_ct(double rad, double the0)
 }
 
 // Function to calculate Bphi_ct
-double Equilibrium::getBphi_ct(double rad, double the0)
+double Equilibrium::getBphi_ct(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -222,7 +222,7 @@ double Equilibrium::getBphi_ct(double rad, double the0)
     return var;
 }
 // Function to calculate B
-double Equilibrium::getB(double rad, double the0)
+double Equilibrium::getB(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -252,7 +252,7 @@ double Equilibrium::getB(double rad, double the0)
     return var;
 }
 // Function to calculate dBdrad
-double Equilibrium::getdBdrad(double rad, double the0)
+double Equilibrium::getdBdrad(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -293,7 +293,7 @@ double Equilibrium::getdBdrad(double rad, double the0)
     return var;
 }
 // Function to calculate dB/dthe
-double Equilibrium::getdBdthe(double rad, double the0)
+double Equilibrium::getdBdthe(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -325,7 +325,7 @@ double Equilibrium::getdBdthe(double rad, double the0)
 }
 
 // Function to calculate Brad_co
-double Equilibrium::getBrad_co(double rad, double the0)
+double Equilibrium::getBrad_co(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -355,7 +355,7 @@ double Equilibrium::getBrad_co(double rad, double the0)
 }
 
 // Function to calculate dBrad_co/drad
-double Equilibrium::getdBrad_codrad(double rad, double the0)
+double Equilibrium::getdBrad_codrad(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -386,7 +386,7 @@ double Equilibrium::getdBrad_codrad(double rad, double the0)
     return var;
 }
 // Function to calculate dBrad_co/dthe
-double Equilibrium::getdBrad_codthe(double rad, double the0)
+double Equilibrium::getdBrad_codthe(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -415,7 +415,7 @@ double Equilibrium::getdBrad_codthe(double rad, double the0)
     return var;
 }
 
-double Equilibrium::getBthe_co(double rad, double the0)
+double Equilibrium::getBthe_co(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -444,7 +444,7 @@ double Equilibrium::getBthe_co(double rad, double the0)
 }
 
 // Function to calculate Bphi_co
-double Equilibrium::getBphi_co(double rad, double the0)
+double Equilibrium::getBphi_co(double rad, double the0) const
 {
     double var = 0.0;
 
@@ -461,7 +461,7 @@ double Equilibrium::getBphi_co(double rad, double the0)
 }
 
 // Function to calculate dBthe_codrad
-double Equilibrium::getdBthe_codrad(double rad, double the0)
+double Equilibrium::getdBthe_codrad(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -491,7 +491,7 @@ double Equilibrium::getdBthe_codrad(double rad, double the0)
 }
 
 // Function to calculate dBthe_codthe
-double Equilibrium::getdBthe_codthe(double rad, double the0)
+double Equilibrium::getdBthe_codthe(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -517,7 +517,7 @@ double Equilibrium::getdBthe_codthe(double rad, double the0)
     return var;
 }
 // Function to calculate Bdirect
-double Equilibrium::getBdirect(double rad, double the0)
+double Equilibrium::getBdirect(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -549,7 +549,7 @@ double Equilibrium::getBdirect(double rad, double the0)
 }
 
 // Function to calculate Brad_co_direct
-double Equilibrium::getBrad_co_direct(double rad, double the0)
+double Equilibrium::getBrad_co_direct(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -573,7 +573,7 @@ double Equilibrium::getBrad_co_direct(double rad, double the0)
     return var;
 }
 
-double Equilibrium::getBthe_co_direct(double rad, double the0)
+double Equilibrium::getBthe_co_direct(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -597,7 +597,7 @@ double Equilibrium::getBthe_co_direct(double rad, double the0)
 }
 
 double Equilibrium::getcos_straight_adhoc(double rad, double the0,
-                                          double rmaxis)
+                                          double rmaxis) const
 {
     double rormaj = rad / rmaxis;
     double var = -1.0 / rormaj + (1.0 - rormaj * rormaj) /
@@ -606,7 +606,7 @@ double Equilibrium::getcos_straight_adhoc(double rad, double the0,
 }
 
 double Equilibrium::getsin_straight_adhoc(double rad, double the0,
-                                          double rmaxis)
+                                          double rmaxis) const
 {
     double rormaj = rad / rmaxis;
     double var = std::sqrt(1.0 - rormaj * rormaj) * std::sin(the0) /
@@ -615,7 +615,7 @@ double Equilibrium::getsin_straight_adhoc(double rad, double the0,
 }
 
 // Function to get R
-double Equilibrium::getR(double rad, double the0)
+double Equilibrium::getR(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -638,7 +638,7 @@ double Equilibrium::getR(double rad, double the0)
 }
 
 // Function to get the derivative of R with respect to rad
-double Equilibrium::getdRdrad(double rad, double the0)
+double Equilibrium::getdRdrad(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -668,7 +668,7 @@ double Equilibrium::getdRdrad(double rad, double the0)
 }
 
 // Function to get the derivative of R with respect to the angle (theta)
-double Equilibrium::getdRdthe(double rad, double the0)
+double Equilibrium::getdRdthe(double rad, double the0) const
 {
     double var = 0.0;
     double rormaj = rad / rmaxis;
@@ -693,7 +693,7 @@ double Equilibrium::getdRdthe(double rad, double the0)
 }
 
 // Function to get Z
-double Equilibrium::getZ(double rad, double the0)
+double Equilibrium::getZ(double rad, double the0) const
 {
     double var = 0.0;
     double the = std::fmod(the0, 2 * M_PI); // Modulo operation
@@ -717,7 +717,7 @@ double Equilibrium::getZ(double rad, double the0)
 }
 
 // Function to get the derivative of Z with respect to rad
-double Equilibrium::getdZdrad(double rad, double the0)
+double Equilibrium::getdZdrad(double rad, double the0) const
 {
     double var = 0.0;
     double rormaj = rad / rmaxis;
@@ -748,7 +748,7 @@ double Equilibrium::getdZdrad(double rad, double the0)
 }
 
 // Function to get the derivative of Z with respect to theta
-double Equilibrium::getdZdthe(double rad, double the0)
+double Equilibrium::getdZdthe(double rad, double the0) const
 {
     double var = 0.0;
     double rormaj = rad / rmaxis;
@@ -776,7 +776,7 @@ double Equilibrium::getdZdthe(double rad, double the0)
 }
 
 // Function to compute dqdrloc_rt
-double Equilibrium::getdqdrloc_rt(double rad, double the)
+double Equilibrium::getdqdrloc_rt(double rad, double the) const
 {
     double var = 0.0;
     double rormaj = rad / rmaxis;
@@ -797,7 +797,7 @@ double Equilibrium::getdqdrloc_rt(double rad, double the)
 }
 
 // Function to compute qloc_rt
-double Equilibrium::getqloc_rt(double rad, double the)
+double Equilibrium::getqloc_rt(double rad, double the) const
 {
     double var = 0.0;
     double drdR, drdZ, dtdR, dtdZ, jaco2, RR;
@@ -820,7 +820,7 @@ double Equilibrium::getqloc_rt(double rad, double the)
 }
 
 // Function to compute psi
-double Equilibrium::getpsi(double rad)
+double Equilibrium::getpsi(double rad) const
 {
     double var = 0.0;
 
@@ -838,7 +838,7 @@ double Equilibrium::getpsi(double rad)
 }
 
 // Function to compute dpsidr
-double Equilibrium::getdpsidr(double rad)
+double Equilibrium::getdpsidr(double rad) const
 {
     double var = 0.0;
 
@@ -854,7 +854,7 @@ double Equilibrium::getdpsidr(double rad)
     return var;
 }
 // Function to compute fpol_r
-double Equilibrium::getfpol_r(double rad)
+double Equilibrium::getfpol_r(double rad) const
 {
     double var = 0.0;
     int idx = 0;
@@ -878,7 +878,7 @@ double Equilibrium::getfpol_r(double rad)
 }
 
 // Function to compute dfpoldr_r
-double Equilibrium::getdfpoldr_r(double rad)
+double Equilibrium::getdfpoldr_r(double rad) const
 {
     double var = 0.0;
     int idx = 1;
@@ -904,7 +904,7 @@ double Equilibrium::getdfpoldr_r(double rad)
 }
 
 // Function to compute jaco2
-double Equilibrium::getjaco2(double rad, double the)
+double Equilibrium::getjaco2(double rad, double the) const
 {
     double var = 0.0;
     double dRdrad = getdRdrad(rad, the);
@@ -918,7 +918,7 @@ double Equilibrium::getjaco2(double rad, double the)
 }
 
 // Function to compute jaco3
-double Equilibrium::getjaco3(double rad, double the)
+double Equilibrium::getjaco3(double rad, double the) const
 {
     double var = 0.0;
     double dRdrad = getdRdrad(rad, the);
