@@ -20,6 +20,7 @@ add_executable(simulation
     Equilibrium.cpp
     ../inih/INIReader.cpp 
     ../inih/ini.c
+    util_math.cpp
 )
 
 # Include headers (including MPI if enabled)
