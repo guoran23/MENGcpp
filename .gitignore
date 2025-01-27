@@ -7,4 +7,4 @@ src/*.F90
 !.vscode/launch.json
 
 inputfiles/*
-!inputfiles/input.ini
+!inputfiles/input.*

@@ -4,7 +4,9 @@
 #include "../inih/INIReader.h"
 #include "Equilibrium.h"
 #include "Field.h"
+#include "MPIManager.h"
 #include "util_math.h"
+
 #include <cmath>
 #include <functional> // std::plus, std::multiplies
 #include <iomanip>
@@ -52,6 +54,7 @@ public:
 
   // Optimized axpy operation using std::transform
   // y=a*x+y, i.e., a*x plus y (PETSC convension)
+  // partrad = partrad + dt * dcoords.partrad
   void axpy(const ParticleCoords &dcoords, double dt) {
     std::transform(partrad.begin(), partrad.end(), dcoords.partrad.begin(),
                    partrad.begin(),
@@ -111,18 +114,34 @@ private:
   ParticleCoords coords;
   double Tem = 1.0;
   double nsonN = 1.0;
-  int sp_id = 0; //start from 0
+  int sp_id = 0; // start from 0
+  double Cp2g;
+  double Cp2g2d1f;
+  double Cp2g1d;
+  int ideltaf = 1; // 0123
+  int rank = 0;
+  int size = 0;
 
 public:
   std::vector<double> partmu;
   std::vector<double> partfog, partg0;
-
   double rmin = 0.2, rmax = 0.8;
+  double rwid = rmax - rmin;
+  double rc = (rmax + rmin) * 0.5;
+  double vts = std::sqrt(Tem / mass);
+  double paux_T_transit = 0.0;
+  int ntrack = 10;
+  std::vector<int> itrack;
+
   // Constructor
   ParticleSpecies(size_t nparticles, double m, double q,
                   const std::string &name = "unknown")
       : nptot(nparticles), coords(nparticles), mass(m), zcharge(q),
         species_name(name) {
+
+    MPIManager &mpiManager = MPIManager::getInstance(); // 获取MPIManager的实例
+    rank = mpiManager.getRank(); // 获取当前进程的rank
+    size = mpiManager.getSize(); // 获取总的进程数
 
     // Initialize partmu, partfog, partg0
     partmu.resize(nptot);
@@ -140,9 +159,256 @@ public:
   const ParticleCoords &getCoords() const { return coords; }
   double getTem() const { return Tem; }
   double getNsonN() const { return nsonN; }
+  double getCp2g() const { return Cp2g; }
+  double getCp2g2d1f() const { return Cp2g2d1f; }
+  double getCp2g1d() const { return Cp2g1d; }
   void setTem(double t) { Tem = t; }
   void setNsonN(double n) { nsonN = n; }
-  void serSpId(int id) { sp_id = id; } 
+  void setSpId(int id) { sp_id = id; }
+  void setCp2g(double cp2g) { Cp2g = cp2g; }
+  void setCp2g2d1f(double cp2g2d1f) { Cp2g2d1f = cp2g2d1f; }
+  void setCp2g1d(double cp2g1d) { Cp2g1d = cp2g1d; }
+  double getideltaf() const { return ideltaf; }
+  void setideltaf(int id) { ideltaf = id; }
+  //
+
+  void particle_onestep_euler_0(Equilibrium &equ, ParticleCoords &dxvdt,
+                                double dt) {
+
+    particle_dxvpardt_xd0vpar0_euler(
+        equ, coords.partrad, coords.parttheta, coords.partvpar, partmu,
+        dxvdt.partrad, dxvdt.parttheta, dxvdt.partphitor, dxvdt.partvpar, true);
+    particle_add_coords(dxvdt, dt);
+  }
+  // --Part 1 of 1. xd0vpar0; 2. xEB1; 3. x01vpar1
+  void particle_dxvpardt_xd0vpar0_euler(
+      const Equilibrium &equ, const std::vector<double> &partrad0,
+      const std::vector<double> &parttheta0,
+      const std::vector<double> &partvpar0, const std::vector<double> &partmu0,
+      std::vector<double> &draddt, std::vector<double> &dthetadt,
+      std::vector<double> &dphitordt, std::vector<double> &dvpardt,
+      bool isSetZero) {
+    // isSetZero: helps d*dt to pass values
+    // this->timer.timerClsTic(2);
+    if (isSetZero) {
+      std::fill(draddt.begin(), draddt.end(), 0.0);
+      std::fill(dthetadt.begin(), dthetadt.end(), 0.0);
+      std::fill(dphitordt.begin(), dphitordt.end(), 0.0);
+      std::fill(dvpardt.begin(), dvpardt.end(), 0.0);
+    }
+
+    // Precompute constant values
+    const double rhoN = equ.rhoN;
+    const double Bref = equ.getBref();
+
+    for (int i = 0; i < nptot; ++i) {
+      double ptrad = partrad0[i];
+      double pttheta = parttheta0[i];
+      double ptvpar = partvpar0[i];
+      double ptmu = partmu0[i];
+      double ptRR, ptZZ, ptB, ptC1;
+      double ptdBdrad, ptdBdthe, ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11,
+          ptg12, ptg22, ptjaco3;
+
+      equ.calcBJgij(ptrad, pttheta, ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe,
+                    ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12, ptg22);
+      ptjaco3 = ptjaco2 * ptRR;
+
+      // 1 dx/dr from vpar
+      dthetadt[i] += ptvpar * ptBthe_ct / ptB;
+      dphitordt[i] += ptvpar * ptBphi_ct / ptB;
+      // 2 dx/dr from vd
+      // note: replaced Bmaxis with Bref=1 (20230414)
+      ptC1 = mass / zcharge * rhoN * (ptvpar * ptvpar + ptmu * ptB) * Bref /
+             (ptB * ptB * ptB);
+
+      draddt[i] += ptC1 * ptFF * ptdBdthe / ptjaco3;
+      dthetadt[i] -= ptC1 * ptFF * ptdBdrad / ptjaco3;
+      dphitordt[i] +=
+          ptC1 * equ.getdpsidr(ptrad) * ptdBdrad * ptg11 / (ptRR * ptRR);
+      // 3 dvpar/dt from mirror force
+      dvpardt[i] -= ptmu * equ.getdpsidr(ptrad) * ptdBdthe / (ptjaco3 * ptB);
+    }
+    // this->timer.timerClsToc(2);
+  }
+
+  void particle_add_coords(const ParticleCoords &dcoords, const double dt) {
+    if (ideltaf == 1 || ideltaf == 2) {
+      coords.axpy(dcoords, dt);
+    } else if (ideltaf == 3) {
+      for (int fic = 0; fic < nptot; ++fic) {
+        coords.partrad[fic] += dcoords.partrad[fic] * dt;
+        coords.parttheta[fic] += dcoords.parttheta[fic] * dt;
+        coords.partphitor[fic] += dcoords.partphitor[fic] * dt;
+        coords.partvpar[fic] += dcoords.partvpar[fic] * dt;
+        partfog[fic] = partfog[fic] + dcoords.partw[fic] * dt;
+      }
+    }
+  }
+
+  void particle_cls_track_init(int iset_track, double Bax) {
+    if (itrack.empty()) {
+      itrack.resize(ntrack);
+    }
+    for (int fic = 0; fic < ntrack; ++fic) {
+      itrack[fic] = fic + 1;
+    }
+    if (iset_track >= 1) {
+      for (int i = 0; i < ntrack; ++i) {
+        coords.parttheta[i] = (atan(1.0) * 0.0);
+        coords.partphitor[i] = 0.0;
+      }
+
+      double vparmin_track = -vts * 2;
+      double vparmax_track = vts * 2;
+
+      double mumin_track = 0.15 * vts * vts / Bax;
+      double mumax_track = vts * vts / Bax;
+
+      if (iset_track == 1) { // passing particles
+        for (int i = 0; i < ntrack; ++i) {
+          coords.partrad[i] = rmin + rwid * 0.5;
+        }
+
+        for (int fic = 0; fic < ntrack; ++fic) {
+          coords.partvpar[fic] =
+              (vparmin_track +
+               fic * (vparmax_track - vparmin_track) / std::max(ntrack - 1, 1));
+        }
+
+        for (int i = 0; i < ntrack; ++i) {
+          partmu[i] = vts * vts * 0.04 / Bax;
+        }
+      } else if (iset_track == 2) { // trapped particles
+        for (int i = 0; i < ntrack; ++i) {
+          coords.partrad[i] = rmin + rwid * 0.8;
+        }
+        for (int fic = 0; fic < ntrack; ++fic) {
+          partmu[fic] = mumin_track + (fic) * (mumax_track - mumin_track) /
+                                          std::max(ntrack - 1, 1);
+        }
+        for (int i = 0; i < ntrack; ++i) {
+          coords.partvpar[i] = vts * (-0.2);
+        }
+      }
+    }
+  }
+
+  void particle_cls_test(Equilibrium &equ, int irk, int nrun, double dt_o_Ttr,
+                         int iset_track) {
+    // Working variables
+    ParticleCoords dxvdt(nptot), dxv_sum(nptot), xv0(nptot);
+    int fic;
+    double dt;
+
+    // Calculate dt
+    std::cout << "Calculating dt..." << std::endl;
+    std::cout << "vts: " << vts << std::endl;
+    std::cout << "equ.getqloc_rt(rc, 0.0): " << equ.getqloc_rt(rc, 0.0)
+              << std::endl;
+    std::cout << "equ.rmaxis: " << equ.rmaxis << std::endl;
+    std::cout << "rc: " << rc << std::endl;
+    paux_T_transit =
+        std::abs(2.0 * M_PI * equ.getqloc_rt(rc, 0.0) * equ.rmaxis / vts);
+    dt = dt_o_Ttr * paux_T_transit;
+    if (rank == 0) {
+      std::cout << " dt set to " << dt << std::endl;
+    }
+
+    // Set passing particles
+    double Bax = abs(equ.Bmaxis);
+    particle_cls_track_init(iset_track, Bax);
+
+    // Initialize coordinates
+    dxvdt.setZero();
+    dxv_sum.setZero();
+    xv0.setZero();
+
+    // Start loop
+    if (rank == 0) {
+      std::cout << "--Particle push starts--" << std::endl;
+    }
+
+    particle_cls_track_record(equ, 0);
+
+    for (fic = 1; fic <= nrun; ++fic) {
+      if (fic % static_cast<int>(std::ceil(1.0 * nrun / 6)) == 0 && rank == 0) {
+        std::cout << "  step " << fic << "/" << nrun << std::endl;
+      }
+
+      if (irk == 0) {
+        particle_onestep_euler_0(equ, dxvdt, dt);
+      } else if (irk == 1) {
+        // particle_onestep_rk4_0(equ, dxvdt, dxv_sum, xv0, dt);
+      } else {
+        if (rank == 0) {
+          std::cout << "  ERROR: set irk to 0 or 1  " << std::endl;
+        }
+        return;
+      }
+
+      particle_cls_track_record(equ, fic);
+    }
+  }
+
+  void particle_cls_track_record(Equilibrium &equ, int irun) {
+    // C++文件操作
+    std::ofstream outfile;
+
+    // 启动计时
+    // timer.clsTic(4);
+
+    if (rank == 0) { // 假设rank是全局变量
+      int nfile = 102;
+      // 使用安全的 std::ostringstream 代替 sprintf
+      std::ostringstream oss;
+      oss << std::setw(10) << sp_id; // 格式化 sp_id，宽度为 10
+      std::string cfile = oss.str(); // 将结果存储为字符串
+      std::string sfile = "data_track" + cfile + ".txt"; // 构造最终的文件名
+
+      // 根据irun和irestart来选择文件打开方式
+      bool irestart = true;
+      if (irun == 0 && !irestart) {
+        outfile.open(sfile, std::ios::out); // 写模式
+      } else {
+        outfile.open(sfile, std::ios::app); // 追加模式
+      }
+
+      // 循环处理所有轨道
+      const double Bref = equ.getBref();
+      const double rhoN = equ.rhoN;
+      for (int fic = 0; fic < ntrack; ++fic) {
+        int fidx = itrack[fic];
+        double ptB = equ.getB(coords.partrad[fidx], coords.parttheta[fidx]);
+
+        double ptpsi_can = equ.getpsi(coords.partrad[fidx]) +
+                           coords.partvpar[fidx] * rhoN *
+                               equ.getfpol_r(coords.partrad[fidx]) * mass *
+                               Bref / (zcharge * ptB);
+
+        double ptenergy =
+            mass * (coords.partvpar[fidx] * coords.partvpar[fidx] / 2 +
+                    partmu[fidx] * ptB);
+
+        // 输出数据
+        outfile << std::scientific << std::setprecision(16)
+                << coords.partrad[fidx] << " " << coords.parttheta[fidx] << " "
+                << coords.partphitor[fidx] << " " << coords.partvpar[fidx]
+                << " " << partmu[fidx] << " " << coords.partw[fidx] << " "
+                << equ.getR(coords.partrad[fidx], coords.parttheta[fidx]) << " "
+                << equ.getZ(coords.partrad[fidx], coords.parttheta[fidx]) << " "
+                << ptenergy << " " << ptpsi_can << std::endl;
+      }
+
+      // 关闭文件
+      outfile.close();
+    }
+
+    // 结束计时
+    // timer.clsToc(4);
+  }
+
+  void particle_cls_link2eq(const Equilibrium &equ) {}
 
   // Print function
   void print() const {
@@ -210,10 +476,9 @@ public:
   int imixvar = 1;
   int ibc_particle = 0, iset_zerosumw;
   bool irestart = false;
-  std::string species_name;
-  int ideltaf = 2;
+
   double phitormin = 0.0, phitormax, phitorwid;
-  int Nphimult = 2;  // 1/Nphimult torus
+  int Nphimult = 2; // 1/Nphimult torus
   // double nsonN = 1.0;
   // double Tem = 1.0;
 
@@ -235,15 +500,10 @@ public:
   double aminor, rmaj, rwid, rmid, rc;
   double rhots;
   double rhotN;
-  double Cp2g;
-  double Cp2g2d1f;
-  double Cp2g1d;
+
   // std::vector<double> partrad, parttheta, partphitor, partvpar, partmu;
   // std::vector<double> partw, partfog, partg0;
 
-  int ntrack = 10;
-  std::vector<int> itrack;
-  double vts, paux_T_transit;
   int ifilter = 0, filter_m0 = -5, filter_m1 = -2, filter_nc = 2;
   std::vector<int> filter_m1d;
   // !--perturbation--
@@ -296,6 +556,7 @@ public:
       double rmax = reader.GetReal(section, "rmax", 0.0);
       double Tem = reader.GetReal(section, "Tem", 1.0);
       double nsonN = reader.GetReal(section, "nsonN", 1.0);
+      int ideltaf = reader.GetInteger(section, "ideltaf", 1);
 
       if (nptot_all > 0) {
         int nptot = nptot_all / mpisize; // calculate particles per process
@@ -307,7 +568,8 @@ public:
         species->rmax = rmax;
         species->setTem(Tem);
         species->setNsonN(nsonN);
-        species->serSpId(i-1); 
+        species->setSpId(i - 1);
+        species->setideltaf(ideltaf);
         std::cout << "  Species '" << species_name << "' added successfully.\n";
         // Log the parsed values
         std::cout << "  nptot: " << nptot << ", mass: " << mass
@@ -399,8 +661,6 @@ public:
     // Implement function to get f0
     return 1.0; // Placeholder
   }
-
-  
 
   void particle_cls_mean_dens(const Equilibrium &equ, double rmin, double rmax,
                               int nrad, int nthe, double &volume,
@@ -509,13 +769,13 @@ public:
     double rmax = species.rmax;
     double Tem = species.getTem();
     int sp_id = species.getSpId();
+    int ideltaf = species.getideltaf();
 
     // Set parameters for all species
     ischeme_motion = ischeme_motion;
     ngyro = ngyro;
     irandom_gy = irandom_gy;
     imixvar = imixvar;
-    ideltaf = ideltaf;
     // Physics
     vparmaxovt = vparmaxovt;
     // Perturbation
@@ -646,13 +906,14 @@ public:
     std::cout << "vparmaxovN=" << vparmaxovN << std::endl;
     mumaxovN2 = std::pow(vparmaxovN, 2) / (2.0 * Bax);
     std::cout << "mumaxovN2=" << mumaxovN2 << std::endl;
-    vts = std::sqrt(Tem / mass);
+    species.vts = std::sqrt(Tem / mass);
     // --
     // // test lgwt
     // std::vector<double> xrad_test(10), wrad_test(10);
     // UtilMath::lgwt(10, 0.2, 0.8, xrad_test, wrad_test);
     // for (int i = 0; i < 10; i++) {
-    //   std::cout << "xrad_test[" << i << "]=" << xrad_test[i] << ", wrad_test["
+    //   std::cout << "xrad_test[" << i << "]=" << xrad_test[i] << ",
+    //   wrad_test["
     //             << i << "]=" << wrad_test[i] << std::endl;
     // }
 
@@ -663,21 +924,25 @@ public:
               << ", dens_mean=" << dens_mean << ", Stot=" << Stot << std::endl;
     // this->Stot = M_PI * (std::pow(rmax, 2) - std::pow(rmin, 2));
     // this->Vtot = this->Stot * this->rmaj * this->phitorwid;
-    Cp2g = Vtot /
-           static_cast<double>(
-               nptot_all); // 3d spline 2021/12/08; use NPTOT_ALL 2022/03/10!
+    // 3d spline 2021/12/08; use NPTOT_ALL 2022/03/10!
+    double Cp2g = Vtot / static_cast<double>(nptot_all);
     Cp2g *= nsonN * (-zcharge);
     Cp2g *= dens_mean;
 
-    Cp2g2d1f = Cp2g; // / phitorwid;
+    double Cp2g2d1f = Cp2g; // / phitorwid;
     if (rank == 0) {
       std::cout << "----set Cp2g2d1f=" << Cp2g2d1f << ", Cp2g=" << Cp2g
                 << ", phitorwid=" << phitorwid << std::endl;
     }
-    Cp2g1d = Vtot / static_cast<double>(nptot_all); // 1d spline 2022/08/18
+    double Cp2g1d =
+        Vtot / static_cast<double>(nptot_all); // 1d spline 2022/08/18
     Cp2g1d *= nsonN * (-zcharge);
     Cp2g1d *= dens_mean;
     Cp2g1d /= (4.0 * std::pow(M_PI, 2) * rmaj / static_cast<double>(Nphimult));
+
+    species.setCp2g(Cp2g);
+    species.setCp2g2d1f(Cp2g2d1f);
+    species.setCp2g1d(Cp2g1d);
 
     if (rank == 0) {
       std::cout << "  particle mean density=" << dens_mean << std::endl;
@@ -703,8 +968,8 @@ public:
 
     // (Rhots only as diagnosis)
     rhots = rhotN * std::sqrt(Tem * mass) / zcharge;
-    paux_T_transit =
-        std::abs(2.0 * M_PI * equ.getqloc_rt(rc, 0.0) * equ.rmaxis / vts);
+    species.paux_T_transit = std::abs(2.0 * M_PI * equ.getqloc_rt(rc, 0.0) *
+                                      equ.rmaxis / species.vts);
 
     if (rank == 0) {
       std::string sform_r =
@@ -750,11 +1015,12 @@ public:
                 << ", aminor=" << 0.0 // Assuming aminor is defined elsewhere
                 << ", rmaj=" << rmaj << ", rwid=" << rwid << ", rmid=" << rmid
                 << ", rc=" << rc << ", rhots=" << rhots << ", rhotN=" << rhotN
-                << ", Cp2g=" << Cp2g << ", vts=" << vts
-                << ", paux_T_tr=" << paux_T_transit << ", pert_rc=" << pert_rc
-                << ", pert_rwid=" << pert_rwid << ", pertamp=" << pertamp
-                << ", dens_mean=" << dens_mean << ", Cp2g1d=" << Cp2g1d
-                << ", nu_colN=" << nu_colN << ", nu_colstar=" << nu_colstar
+                << ", Cp2g=" << Cp2g << ", vts=" << species.vts
+                << ", paux_T_tr=" << species.paux_T_transit
+                << ", pert_rc=" << pert_rc << ", pert_rwid=" << pert_rwid
+                << ", pertamp=" << pertamp << ", dens_mean=" << dens_mean
+                << ", Cp2g1d=" << Cp2g1d << ", nu_colN=" << nu_colN
+                << ", nu_colstar=" << nu_colstar
                 << ", pert_thetac=" << pert_thetac
                 << ", pert_thetawid=" << pert_thetawid
                 << ", pert_lr=" << pert_lr << ", partwcut=" << partwcut
@@ -798,18 +1064,19 @@ public:
     auto &partfog = species.partfog;
     auto &partg0 = species.partg0;
     int nptot = species.getNptot();
+    int ideltaf = species.getideltaf();
 
     const double mass = species.getMass();
 
     // Init Random
     random_seed();
     random_number(partrad);
-    std::cout << "partrad[0]: " << partrad[0] << std::endl;
 
     double c0rnd, c1rnd;
     double Tpar, Tperp, zwidprod, BB;
     int fic;
 
+    // 1. Rad
     if (ischeme_load == 1) {
       for (fic = 0; fic < nptot; ++fic) {
         c0rnd = rmin * rmin;
@@ -829,7 +1096,7 @@ public:
       parttheta[fic] = parttheta[fic] * 2.0 * M_PI;
       partphitor[fic] = partphitor[fic] * phitorwid + phitormin;
     }
-    std::cout << "parttheta[0]: " << parttheta[0] << std::endl;
+
     // 4. Vpar
     double vpar0 = 0.0;
     double rndmu4 = vpar0;
@@ -843,7 +1110,7 @@ public:
       }
       partvpar[fic] = rndf8;
     }
-    std::cout << "partvpar[0]: " << partvpar[0] << std::endl;
+
     // 5. Mu
     zwidprod = phitorwid * rwid * 2.0 * M_PI;
 
@@ -860,7 +1127,7 @@ public:
         rndf8 = static_cast<double>(rand()) / RAND_MAX;
         partmu[fic] = -Tperp / mass * std::log(rndf8) / BB / 2.0;
       }
-      
+
       // 1b. full weight
       if (load_can == 0) {
         partfog[fic] = getdens1d(partrad[fic]) / dens_mean;
@@ -894,8 +1161,17 @@ public:
                                          partvpar[fic], partmu[fic], equ) /
                       partfog[fic];
       }
-
-    std::cout << "partmu[" << fic << "]: " << partmu[fic] << std::endl;  
+      // print particle info
+      std::cout << "partrad[" << fic << "]: " << partrad[fic] << std::endl;
+      std::cout << "parttheta[" << fic << "]: " << parttheta[fic] << std::endl;
+      std::cout << "partphitor[" << fic << "]: " << partphitor[fic]
+                << std::endl;
+      std::cout << "partvpar[" << fic << "]: " << partvpar[fic] << std::endl;
+      std::cout << "partmu[" << fic << "]: " << partmu[fic] << std::endl;
+      std::cout << "partfog[" << fic << "]: " << partfog[fic] << std::endl;
+      std::cout << "partg0[" << fic << "]: " << partg0[fic] << std::endl;
+      std::cout << "partw[" << fic << "]: " << partw[fic] << std::endl;
+      std::cout << "---------------------------" << std::endl;
     }
   }
 };
