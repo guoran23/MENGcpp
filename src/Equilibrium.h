@@ -68,6 +68,8 @@ public:
     set_zerof = reader.GetBoolean("Equilibrium", "set_zerof", false);
     fname = reader.Get("Equilibrium", "fname", "");
     profilename = reader.Get("Equilibrium", "profilename", "");
+    rhoN = reader.GetReal("Equilibrium", "rhoN", 0.0);
+    Bref = reader.GetReal("Equilibrium", "Bref", 1.0);
 
     rmaxis = rmaxis_adhoc;
     Bmaxis = Bmaxis_adhoc;
@@ -81,10 +83,13 @@ public:
               << "c1adhoc: " << c1adhoc << "\n"
               << "c2adhoc: " << c2adhoc << "\n"
               << "rmaxis_adhoc: " << rmaxis_adhoc << "\n"
+              << "aminor: " << aminor << "\n"
               << "Bmaxis_adhoc: " << Bmaxis_adhoc << "\n"
               << "set_zerof: " << (set_zerof ? "true" : "false") << "\n"
               << "fname: " << fname << "\n"
-              << "profilename: " << profilename << "\n";
+              << "profilename: " << profilename << "\n"
+              << "Bref: " << Bref << "\n"
+              << "rhoN: " << rhoN << "\n";
   }
   // ---------------------------------------------------------
   double get_qbar(double rho) const {
@@ -231,6 +236,7 @@ public:
   double getsin_straight_adhoc(double rad, double the0, double rmaxis) const;
 
   void equil_cls_showinfo(int rank);
+  void writeWallRZ() const;
 
   // Initialization function
   void equil_cls_init_adhoc(int rank) {

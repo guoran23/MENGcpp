@@ -110,6 +110,8 @@ public:
                 << std::endl;
     // Create an equilibrium state
     equ.readInput("input.ini"); // instance the equ
+    equ.printState();
+    equ.writeWallRZ();
 
     // Field part (commented out)
     // if (rank == 0)
@@ -154,7 +156,7 @@ private:
 
 int main(int argc, char **argv) {
   Simulation sim(argc, argv);
-  //   sim.run();
+  // sim.run();
   sim.testParticle();
   return 0;
 }

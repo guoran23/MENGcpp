@@ -2,25 +2,57 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "MPI_debug", // Debug configuration name
-            "type": "cppdbg", // Debugger type (C++ GDB/LLDB)
-            "MIMode": "gdb", // Debug backend
-            "preLaunchTask": "Build MPI", // Run task before debugging
-            "request": "attach", // Attach to a running process
-            "processId": "${command:pickProcess}", // Select process to attach
-            "program": "${workspaceFolder}/build_MPI/bin/simulation", // Target program
-            "args": [], // Program arguments
-            "cwd": "${workspaceFolder}/build_MPI/bin/", // Working directory
-            "environment": [], // Environment variables  
-            "externalConsole": false, // Use VSCode's terminal
-            "stopAtEntry": false, // Don't stop at entry point
+            "name": "MPI_debug",
+            "type": "cppdbg",
+            "MIMode": "gdb",
+            "preLaunchTask": "Build MPI",
+            "request": "attach",
+            "processId": "${command:pickProcess}",
+            "program": "${workspaceFolder}/build_MPI/bin/simulation",
+            "args": [],
+            "cwd": "${workspaceFolder}/build_MPI/bin/",
+            "environment": [],
+            "externalConsole": false,
+            "stopAtEntry": false,
             "setupCommands": [
                 {
                     "description": "Enable GDB pretty-printing",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ]                
+            ]
+        },
+        {
+            "name": "Debug with GDB",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build_MPI/bin/simulation",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}/inputfiles/",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Auto-load shared libraries",
+                    "text": "set auto-solib-add on",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Build MPI",
+            "logging": {
+                "trace": true,
+                "engineLogging": true,
+                "exceptions": true,
+                "moduleLoad": true
+            }
         }
     ]
 }

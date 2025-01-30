@@ -126,12 +126,16 @@ public:
   std::vector<double> partmu;
   std::vector<double> partfog, partg0;
   double rmin = 0.2, rmax = 0.8;
+  //derived parameters
   double rwid = rmax - rmin;
   double rc = (rmax + rmin) * 0.5;
   double vts = std::sqrt(Tem / mass);
+  //derived parameters using equ
   double paux_T_transit = 0.0;
+  //
   int ntrack = 10;
   std::vector<int> itrack;
+  bool irestart = false;
 
   // Constructor
   ParticleSpecies(size_t nparticles, double m, double q,
@@ -251,7 +255,7 @@ public:
       itrack.resize(ntrack);
     }
     for (int fic = 0; fic < ntrack; ++fic) {
-      itrack[fic] = fic + 1;
+      itrack[fic] = fic;
     }
     if (iset_track >= 1) {
       for (int i = 0; i < ntrack; ++i) {
@@ -362,12 +366,12 @@ public:
       int nfile = 102;
       // 使用安全的 std::ostringstream 代替 sprintf
       std::ostringstream oss;
-      oss << std::setw(10) << sp_id; // 格式化 sp_id，宽度为 10
+      // oss << std::setw(10) << sp_id; // 格式化 sp_id，宽度为 10
+      oss << sp_id; // 格式化 sp_id
       std::string cfile = oss.str(); // 将结果存储为字符串
       std::string sfile = "data_track" + cfile + ".txt"; // 构造最终的文件名
 
       // 根据irun和irestart来选择文件打开方式
-      bool irestart = true;
       if (irun == 0 && !irestart) {
         outfile.open(sfile, std::ios::out); // 写模式
       } else {

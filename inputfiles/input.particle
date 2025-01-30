@@ -1,5 +1,5 @@
 icase=0
-irk=1
-nrun=100
-dt_o_Ttr=0.01
-iset_track=1
+irk=0
+nrun=200
+dt_o_Ttr=0.05
+iset_track=2

@@ -17,6 +17,49 @@ void Equilibrium::displayEquilibrium() const {
             << " K\n";
 }
 
+void Equilibrium::writeWallRZ() const {
+
+  const std::size_t nbbbs = 500;
+  std::array<double, nbbbs> theta;
+  std::array<double, nbbbs> rbbbs, zbbbs;
+  double rad = 1.0;
+  double dtheta = 2.0 * M_PI / static_cast<double>(nbbbs - 1); 
+
+  for (std::size_t i = 0; i < nbbbs; ++i) {
+    theta[i] = -M_PI + i * dtheta;
+    rbbbs[i] = getR(rad, theta[i]);
+    zbbbs[i] = getZ(rad, theta[i]);
+  }
+
+  std::ofstream file;
+
+  // Write rzbbbs.txt
+  file.open("rzbbbs.txt");
+  if (!file) {
+    std::cerr << "Error: Failed to open rzbbbs.txt\n";
+  } else {
+    for (size_t fic = 0; fic < rbbbs.size(); ++fic) {
+      file << std::scientific << std::setw(16) << std::setprecision(4)
+           << rbbbs[fic] << std::setw(16) << std::setprecision(4) << zbbbs[fic]
+           << "\n";
+    }
+    file.close();
+  }
+
+  // // Write rzlim.txt
+  // file.open("rzlim.txt");
+  // if (!file) {
+  //     std::cerr << "Error: Failed to open rzlim.txt\n";
+  // } else {
+  //     for (size_t fic = 0; fic < rlim.size(); ++fic) {
+  //         file << std::scientific << std::setw(16) << std::setprecision(4) <<
+  //         rlim[fic]
+  //              << std::setw(16) << std::setprecision(4) << zlim[fic] << "\n";
+  //     }
+  //     file.close();
+  // }
+}
+
 void Equilibrium::equil_cls_showinfo(int rank) {
   if (rank == 0) {
     // Formatting strings (similar to Fortran sform_r and sform_i)
@@ -124,7 +167,7 @@ void Equilibrium::calcBJgij(double rad, double the0, double &RR, double &ZZ,
                             double &Bthe_ct, double &Bphi_ct, double &jaco2,
                             double &FF, double &g11, double &g12,
                             double &g22) const {
-  //input rad, the0
+  // input rad, the0
   double the = std::fmod(the0, 2 * M_PI); // Modulo operation to wrap the angle
   double drdR, drdZ, dtdR, dtdZ;
 
@@ -224,7 +267,7 @@ double Equilibrium::getB(double rad, double the0) const {
 double Equilibrium::getdBdrad(double rad, double the0) const {
   double var = 0.0;
   double the = std::fmod(the0, 2 * M_PI); // Modulo operation
-  double rormaj = 0.0, qloc = 0.0, tmpcoeff = 0.0;
+  double rormaj = 0.0, qloc = 0.0;
   int idx = 1, idy = 0, iflag = 0;
 
   if (iequmodel == 1) {
@@ -250,7 +293,7 @@ double Equilibrium::getdBdrad(double rad, double the0) const {
               (1.0 - rormaj * cos_the0) * Bmaxis /
               (rormaj_factor * rormaj_factor) -
           (nu_over_q * nu_over_q / rormaj_factor + 1.0) * cos_the0 * Bmaxis /
-              (tmpcoeff * rmaxis);
+              (rormaj_factor * rmaxis);
 
     var = var / std::sqrt(nu_over_q * nu_over_q / rormaj_factor + 1.0);
   }
