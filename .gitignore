@@ -8,3 +8,4 @@ src/*.F90
 
 inputfiles/*
 !inputfiles/input.*
+!inputfiles/*.py

@@ -126,11 +126,11 @@ public:
   std::vector<double> partmu;
   std::vector<double> partfog, partg0;
   double rmin = 0.2, rmax = 0.8;
-  //derived parameters
+  // derived parameters
   double rwid = rmax - rmin;
   double rc = (rmax + rmin) * 0.5;
   double vts = std::sqrt(Tem / mass);
-  //derived parameters using equ
+  // derived parameters using equ
   double paux_T_transit = 0.0;
   //
   int ntrack = 10;
@@ -183,6 +183,48 @@ public:
         equ, coords.partrad, coords.parttheta, coords.partvpar, partmu,
         dxvdt.partrad, dxvdt.parttheta, dxvdt.partphitor, dxvdt.partvpar, true);
     particle_add_coords(dxvdt, dt);
+  }
+  void particle_onestep_rk4_0(Equilibrium &equ, ParticleCoords &dxvdt,
+                              ParticleCoords &dxv_sum, ParticleCoords &xv0,
+                              double dt) {
+    double dthalf = dt / 2.0;
+    double dt1o6 = dt / 6.0;
+    double dt2o6 = dt * 2.0 / 6.0;
+
+    dxv_sum.setZero();
+    xv0 = coords; // Save the initial coordinates
+    // Step 1
+    particle_dxvpardt_xd0vpar0_euler(
+        equ, coords.partrad, coords.parttheta, coords.partvpar, partmu,
+        dxvdt.partrad, dxvdt.parttheta, dxvdt.partphitor, dxvdt.partvpar, true);
+    dxv_sum.axpy(dxvdt, dt1o6);
+
+    // Step 2
+    particle_add_coords(dxvdt, dthalf);
+    particle_dxvpardt_xd0vpar0_euler(
+        equ, coords.partrad, coords.parttheta, coords.partvpar, partmu,
+        dxvdt.partrad, dxvdt.parttheta, dxvdt.partphitor, dxvdt.partvpar, true);
+    dxv_sum.axpy(dxvdt, dt2o6);
+
+    // Step 3
+    coords = xv0; // Reset to the initial coordinates
+    particle_add_coords(dxvdt, dthalf);
+    particle_dxvpardt_xd0vpar0_euler(
+        equ, coords.partrad, coords.parttheta, coords.partvpar, partmu,
+        dxvdt.partrad, dxvdt.parttheta, dxvdt.partphitor, dxvdt.partvpar, true);
+    dxv_sum.axpy(dxvdt, dt2o6);
+
+    // Step 4
+    coords = xv0;
+    particle_add_coords(dxvdt, dt);
+    particle_dxvpardt_xd0vpar0_euler(
+        equ, coords.partrad, coords.parttheta, coords.partvpar, partmu,
+        dxvdt.partrad, dxvdt.parttheta, dxvdt.partphitor, dxvdt.partvpar, true);
+    dxv_sum.axpy(dxvdt, dt1o6);
+
+    // Final step
+    coords = xv0;
+    particle_add_coords(dxv_sum, 1.0);
   }
   // --Part 1 of 1. xd0vpar0; 2. xEB1; 3. x01vpar1
   void particle_dxvpardt_xd0vpar0_euler(
@@ -343,7 +385,7 @@ public:
       if (irk == 0) {
         particle_onestep_euler_0(equ, dxvdt, dt);
       } else if (irk == 1) {
-        // particle_onestep_rk4_0(equ, dxvdt, dxv_sum, xv0, dt);
+        particle_onestep_rk4_0(equ, dxvdt, dxv_sum, xv0, dt);
       } else {
         if (rank == 0) {
           std::cout << "  ERROR: set irk to 0 or 1  " << std::endl;
@@ -367,7 +409,7 @@ public:
       // 使用安全的 std::ostringstream 代替 sprintf
       std::ostringstream oss;
       // oss << std::setw(10) << sp_id; // 格式化 sp_id，宽度为 10
-      oss << sp_id; // 格式化 sp_id
+      oss << sp_id;                  // 格式化 sp_id
       std::string cfile = oss.str(); // 将结果存储为字符串
       std::string sfile = "data_track" + cfile + ".txt"; // 构造最终的文件名
 
