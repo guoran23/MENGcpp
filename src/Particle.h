@@ -1221,27 +1221,4 @@ public:
     }
   }
 };
-
-// class Particle {
-// private:
-//   double mass;
-//   double zcharge;
-//   std::vector<double> position;
-//   std::vector<double> velocity;
-
-// public:
-//   int rank; // MPI rank of the process
-//   int size; // Total number of MPI processes
-//   Particle(double m, double q, std::vector<double> pos, std::vector<double>
-//   vel)
-//       : rank(-1), size(0){};
-
-//   void move(const Field &field, double dt);
-//   void displayState() const;
-
-//   void initializeMPI() {
-//     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-//     MPI_Comm_size(MPI_COMM_WORLD, &size);
-//   }
-// };
 #endif // PARTICLE_H
