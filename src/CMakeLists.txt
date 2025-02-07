@@ -11,7 +11,6 @@ else()
     message(STATUS "Building without MPI")
 endif()
 
-
 # Add the executable
 add_executable(simulation
     main.cpp
@@ -21,6 +20,7 @@ add_executable(simulation
     ../inih/INIReader.cpp 
     ../inih/ini.c
     util_math.cpp
+    util_io.cpp
 )
 
 # Include headers (including MPI if enabled)

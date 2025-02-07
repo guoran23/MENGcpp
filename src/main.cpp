@@ -2,6 +2,10 @@
 #include "Field.h"
 #include "MPIManager.h"
 #include "Particle.h"
+#include "SplineCubicNd.h"
+#include "util_io.h"
+
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <mpi.h>
@@ -149,6 +153,89 @@ public:
       std::cout << "====Test Particle Ends====" << std::endl;
   }
 
+  void testSplineNd() {
+
+    if (rank == 0)
+      std::cout << "========== Test SplineNd Starts ==========" << std::endl;
+    SplineCubicNdCls spc1d, f_bsp;
+
+    int isource = 1;
+
+    int fic, fjc, fkc;
+    int idiffx = 0, idiffy = 0, idiffz = 0;
+    int nqx = 40, nqy = 41, nqz = 42;
+    std::vector<double> xq1d(nqx), yq1d(nqy), zq1d(nqz), fq1d;
+    double t0, t1, t2;
+
+    // Initialize the spline (Assume SplineCubicNd has similar methods)
+    spc1d.spc_cls_init(isource);
+    spc1d.spc_cls_test();
+
+    int ndim = spc1d.getDimension();
+    if (ndim >= 1) {
+      for (int i = 0; i < nqx; i++)
+        xq1d[i] = spc1d.getZMin(0) - spc1d.getDz(0) +
+                  (spc1d.getZWidth(0) + 2 * spc1d.getDz(0)) * i / (nqx - 1);
+    }
+
+    if (ndim >= 2) {
+      for (int i = 0; i < nqy; i++)
+        yq1d[i] = spc1d.getZMin(1) - spc1d.getDz(1) +
+                  (spc1d.getZWidth(1) + 2 * spc1d.getDz(1)) * i / (nqy - 1);
+    }
+
+    if (ndim >= 3) {
+      for (int i = 0; i < nqz; i++)
+        zq1d[i] = spc1d.getZMin(2) - spc1d.getDz(2) +
+                  (spc1d.getZWidth(2) + 2 * spc1d.getDz(2)) * i / (nqz - 1);
+    }
+
+    // Allocate for function values
+    if (ndim == 1)
+      fq1d.resize(nqx);
+    else if (ndim == 2)
+      fq1d.resize(nqx * nqy);
+    else if (ndim == 3)
+      fq1d.resize(nqx * nqy * nqz);
+
+    // !calc. interpolated values
+    // Perform interpolation (timing included)
+    auto start = std::chrono::high_resolution_clock::now();
+    t1 = MPI_Wtime();
+    if (ndim == 1) {
+      // !=========================1D interpolation=======================
+      if (rank == 0) {
+        std::cout
+            << "--------f_bsp 1d test starts: initialize, evaluate--------"
+            << std::endl;
+      }
+      // call f_bsp%initialize1d(spc1d%z1d_arr(1)%v,
+      // spc1d%fval(1:spc1d%nnode_arr(1)), spc1d%bc_arr(1), spc1d%ext_arr(1))
+      f_bsp.initialize1d(spc1d.getZ1d(0), spc1d.getFval(), spc1d.getBC(0),
+                         spc1d.getExt(0));
+      for (int i = 0; i < nqx; i++)
+        f_bsp.evaluate1d(xq1d[i], idiffx, fq1d[i]);
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    t2 = MPI_Wtime();
+
+    if (rank == 0) {
+      std::chrono::duration<double> elapsed = end - start;
+      std::cout << "Interpolation Time: " << elapsed.count() << " seconds"
+                << std::endl;
+      std::cout << "---- cputime: " << t2 - t1 << " ----" << std::endl;
+    }
+
+    if (rank == 0) {
+      UtilIO::write_arr1d_r8(fq1d, "data_fval_intp_dense.txt", true);
+      // UtilIO::write_arr1d_r8(f_bsp.fspl, "data_fspl_oop.txt");
+      // UtilIO::write_arr1d_r8(f_bsp.fval, "data_fval_intp.txt");
+    }
+
+    if (rank == 0)
+      std::cout << "========== Test SplineNd Ends ==========" << std::endl;
+  }
+
 private:
   MPIManager &mpiManager;
   int rank, size;
@@ -157,6 +244,7 @@ private:
 int main(int argc, char **argv) {
   Simulation sim(argc, argv);
   // sim.run();
-  sim.testParticle();
+  // sim.testParticle();
+  sim.testSplineNd();
   return 0;
 }

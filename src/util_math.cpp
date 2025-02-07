@@ -5,11 +5,11 @@ void UtilMath::lgwt(int n, double a, double b, std::vector<double> &x1d,
   if (n <= 1) {
     throw std::invalid_argument("lgwt Error: n must be greater than 1");
   }
-  if (static_cast<int>(x1d.size()) != n) {
-    throw std::invalid_argument("lgwt Error: x1d must have a size of n.");
+  if (static_cast<int>(x1d.size()) < n) {
+    throw std::invalid_argument("lgwt Error: x1d must have a size larger than n.");
   }
-  if (static_cast<int>(w1d.size()) != n) {
-    throw std::invalid_argument("lgwt Error: w1d must have a size of n.");
+  if (static_cast<int>(w1d.size()) < n) {
+    throw std::invalid_argument("lgwt Error: w1d must have a size larger than n.");
   }
   const double eps = std::numeric_limits<double>::epsilon();
 
