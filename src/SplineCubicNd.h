@@ -326,7 +326,7 @@ public:
   }
 
   void evaluate1d(double XX, int idiffx, double &output_fval) const {
-    int idim = 1; // Fixed for 1D case
+    int idim = 0; // Fixed for 1D case
     output_fval = 0.0;
 
     int ibas1ref, ibas1;
@@ -616,7 +616,7 @@ public:
         xloc = 1.0;
         return;
       }
-
+      
       ibas = static_cast<int>(std::floor(XX / dz_arr[idirect])) + ishift + 1;
 
       if (ibas <= 0) {
@@ -639,7 +639,7 @@ public:
     double x1, x2, x3, fbas1, fbas2, fbas3, x1ref, x2ref, x3ref;
     int ibas1, i1shift, ibas1ref, ibas2ref, ibas3ref;
     int ibas2, i2shift, ibas3, i3shift;
-    constexpr int idim1 = 1, idim2 = 2, idim3 = 3;
+    constexpr int idim1 = 0, idim2 = 1, idim3 = 2;
     int idx;
 
     // Reset fval array to zero
@@ -682,7 +682,7 @@ public:
 
   // some basic functions
   double spc_cls_get_fbas_ix(int ibas, double x, int idiff, int idirec) const {
-    if (idirec >= 4 || idirec <= 0) {
+    if (idirec >= 3 || idirec < 0) {
       std::cerr << "====Error: wrong idirec in Spc_Cls_Get_Fbas_ix===="
                 << std::endl;
       return 0.0;
