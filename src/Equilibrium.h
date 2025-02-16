@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <array>
 
 class Equilibrium {
 private:

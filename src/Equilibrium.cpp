@@ -1,5 +1,5 @@
 #include "Equilibrium.h"
-#include <iostream>
+
 
 Equilibrium::Equilibrium(double p, double t) : pressure(p), temperature(t) {}
 
@@ -19,7 +19,7 @@ void Equilibrium::displayEquilibrium() const {
 
 void Equilibrium::writeWallRZ() const {
 
-  const std::size_t nbbbs = 500;
+  constexpr std::size_t nbbbs = 500;
   std::array<double, nbbbs> theta;
   std::array<double, nbbbs> rbbbs, zbbbs;
   double rad = 1.0;
