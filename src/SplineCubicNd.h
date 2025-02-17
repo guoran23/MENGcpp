@@ -461,8 +461,14 @@ idxdof.clear();
                            std::vector<double> &fspl) {
     if (ndim == 1) {
       spc_cls_splinefit1d(fval, fspl); // Call 1D spline fitting
-    } else if (ndim == 2 || ndim == 3) {
+    } else if (ndim == 2) {
       spc_cls_splinefit2d(fval, fspl); // Call 2D or 3D spline fitting
+    } else if (ndim == 3) {
+      spc_cls_splinefit3d(fval, fspl); // Call 2D or 3D spline fitting
+    } else {
+      std::cerr << "======== Error: ndim="<<ndim<<" > 3 not implemented in spc_cls_splinefitNd "
+                   "========"
+                << std::endl;
     }
   }
   // To do
@@ -486,13 +492,75 @@ idxdof.clear();
   }
   void spc_cls_splinefit2d(const std::vector<double> &fval,
                            std::vector<double> &fspl) {
-    // Resize fspl to match the size of fval if needed
-    if (fspl.size() != fval.size()) {
-      fspl.resize(fval.size());
-    }
 
-    // Copy values from fval to fspl
-    fspl = fval;
+    int ishift, jshift;
+    int fic, fjc;
+    int idxspl, idxval;
+
+    if (bc_arr[0] ==0)
+    {
+      ishift=0;
+    }else
+    {
+      ishift=1;
+    }
+    if (bc_arr[1] ==0)
+    {
+      jshift=0;
+    }else
+    {
+      jshift=1;
+    }
+    
+    for (int fic = 0; fic < nnode_arr[0]; ++fic) {
+      for (int fjc = 0; fjc < nnode_arr[1]; ++fjc) {
+
+          idxval = fic + fjc * nnode_arr[0];
+          idxspl = (fic + ishift) + (fjc + jshift) * nfem_arr[0];
+
+          fspl[idxspl] = fval[idxval];
+      }
+    }
+  }
+  void spc_cls_splinefit3d(const std::vector<double> &fval,
+                           std::vector<double> &fspl) {
+    int ishift, jshift, kshift;
+    int fic, fjc, fkc;
+    int idxspl, idxval;
+
+    if (bc_arr[0] ==0)
+    {
+      ishift=0;
+    }else
+    {
+      ishift=1;
+    }
+    if (bc_arr[1] ==0)
+    {
+      jshift=0;
+    }else
+    {
+      jshift=1;
+    }
+    if (bc_arr[2] ==0)
+    {
+      kshift=0;
+    }else
+    {
+      kshift=1;
+    }
+    
+    for (int fic = 0; fic < nnode_arr[0]; ++fic) {
+      for (int fjc = 0; fjc < nnode_arr[1]; ++fjc) {
+        for (int fkc = 0; fkc < nnode_arr[2]; ++fkc) {
+
+          idxval = fic + fjc * nnode_arr[0] + fkc * nnode_arr[0] * nnode_arr[1];
+          idxspl = (fic + ishift) + (fjc + jshift) * nfem_arr[0] + (fkc + kshift) * nfem_arr[0] * nfem_arr[1];
+
+          fspl[idxspl] = fval[idxval];
+        }
+      }
+    }
   }
 
   void initBC() {
