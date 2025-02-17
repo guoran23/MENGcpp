@@ -324,7 +324,74 @@ public:
     idxbc.clear();
     idxdof.clear();
   }
+  void initialize3d(const std::vector<double> &x1d, const std::vector<double> &y1d, const std::vector<double> &z1d,
+    const std::vector<double> &f1d, int bcx, int bcy, int bcz, int extx, int exty, int extz) {
+constexpr int ndim = 3;
+std::array<int, ndim> bc_arr, ext_arr, nnode_arr;
+std::array<double, ndim> zmin_arr, zmax_arr;
+int idim1 = 0; // Zero-based index in C++
+int idim2 = 1; // Zero-based index in C++
+int idim3 = 2; // Zero-based index in C++
+int input_source = 0;
 
+// Ensure x1d and f1d have the same size
+if (x1d.size()*y1d.size()*z1d.size() != f1d.size()) {
+std::cerr << "========error: wrong size in initialize3d========"
+<< std::endl;
+return;
+}
+
+bc_arr[idim1] = bcx;
+bc_arr[idim2] = bcy;
+bc_arr[idim3] = bcz;
+ext_arr[idim1] = extx;
+ext_arr[idim2] = exty;
+ext_arr[idim3] = extz;
+
+nnode_arr[idim1] = x1d.size();
+nnode_arr[idim2] = y1d.size();
+nnode_arr[idim3] = z1d.size();
+
+zmin_arr[idim1] = x1d.front(); // First element of x1d
+zmin_arr[idim2] = y1d.front(); // First element of y1d
+zmin_arr[idim3] = z1d.front(); // First element of z1d
+
+if (bc_arr[idim1] == 0) {
+zmax_arr[idim1] = x1d.back() + (x1d[1] - x1d[0]);
+} else if (bc_arr[idim1] >= 1) {
+zmax_arr[idim1] = x1d.back();
+}
+
+if (bc_arr[idim2] == 0) {
+zmax_arr[idim2] = y1d.back() + (y1d[1] - y1d[0]);
+} else if (bc_arr[idim2] >= 1) {
+zmax_arr[idim2] = y1d.back();
+}
+
+if (bc_arr[idim3] == 0) {
+zmax_arr[idim3] = z1d.back() + (z1d[1] - z1d[0]);
+} else if (bc_arr[idim3] >= 1) {
+zmax_arr[idim3] = z1d.back();
+}
+
+// Call the class method spc_cls_init using this-> implicitly
+this->spc_cls_init(input_source, ndim,
+       std::vector<int>(bc_arr.begin(), bc_arr.end()),
+       std::vector<int>(ext_arr.begin(), ext_arr.end()),
+       std::vector<int>(nnode_arr.begin(), nnode_arr.end()),
+       std::vector<double>(zmin_arr.begin(), zmin_arr.end()),
+       std::vector<double>(zmax_arr.begin(), zmax_arr.end()));
+
+// Resize fspl instead of allocating memory manually
+fspl.resize(ntotfem);
+
+// Perform spline fitting
+this->spc_cls_splinefitNd(f1d, fspl);
+
+// Clear idxbc and idxdof instead of deallocation
+idxbc.clear();
+idxdof.clear();
+}
   void evaluate1d(double XX, int idiffx, double &output_fval) const {
     int idim = 0; // Fixed for 1D case
     output_fval = 0.0;
@@ -384,7 +451,7 @@ public:
         }
       }
     } else {
-      std::cerr << "======== Error: ndim > 3 not implemented in spc_cls_set_ms "
+      std::cerr << "======== Error: ndim="<<ndim<<" > 3 not implemented in spc_cls_set_ms "
                    "========"
                 << std::endl;
     }
@@ -485,7 +552,7 @@ public:
         }
       }
     } else {
-      std::cerr << "======== Error in initBC: ndim > 3 not implemented ========"
+      std::cerr << "======== Error in initBC: ndim ="<< ndim <<" > 3 not implemented ========"
                 << std::endl;
       return;
     }
@@ -651,7 +718,7 @@ public:
 
   //
   void evaluate3d(double XX, double YY, double ZZ, int idiffx, int idiffy,
-                  int idiffz) {
+                  int idiffz,double &output_fval) {
     double x1, x2, x3, fbas1, fbas2, fbas3, x1ref, x2ref, x3ref;
     int ibas1, i1shift, ibas1ref, ibas2ref, ibas3ref;
     int ibas2, i2shift, ibas3, i3shift;
@@ -659,7 +726,8 @@ public:
     int idx;
 
     // Reset fval array to zero
-    std::fill(fval.begin(), fval.end(), 0.0);
+    //std::fill(fval.begin(), fval.end(), 0.0);
+    output_fval = 0.0;
 
     // Convert global to local indices
     spc_cls_glb2loc(ZZ, idim3, 0, ibas3ref, x3ref);
@@ -702,7 +770,8 @@ public:
             fval.resize(idx + 1, 0.0);
           }
 
-          fval[idx] += fbas1 * fbas2 * fbas3 * fspl[idx];
+          //fval[idx] += fbas1 * fbas2 * fbas3 * fspl[idx];
+          output_fval += fbas1 * fbas2 * fbas3 * fspl[idx];
         }
       }
     }

@@ -223,7 +223,13 @@ public:
             << "--------f_bsp 3d test starts: initialize, evaluate--------"
             << std::endl;
       }
-      //f_bsp.initialize3d(spc1d.getZ1d(0), spc1d.getZ1d(1), spc1d.getZ1d(2));
+      f_bsp.initialize3d(spc1d.getZ1d(0), spc1d.getZ1d(1), spc1d.getZ1d(2), spc1d.getFval(), 
+                         spc1d.getBC(0), spc1d.getBC(1), spc1d.getBC(2), 
+                         spc1d.getExt(0), spc1d.getExt(1), spc1d.getExt(2));
+      for (int i = 0; i < nqx; i++)
+        for (int j = 0; j < nqy; j++)
+          for (int k = 0; k < nqz; k++)
+            f_bsp.evaluate3d(xq1d[i], yq1d[j], zq1d[k], idiffx, idiffy, idiffz, fq1d[i + j * nqx + k * nqx * nqy]);
     }
     auto end = std::chrono::high_resolution_clock::now();
     t2 = MPI_Wtime();

@@ -2,7 +2,7 @@ ndim 3
 nl_debug 1
 bc_arr 2 2 2
 ext_arr 2 2 2
-nnode_arr 16 64 8
+nnode_arr 12 16 8
 zmin_arr 0.0 0.0 0.0
 zmax_arr 1.0 1.1 1.2
 
