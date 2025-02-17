@@ -338,15 +338,22 @@ public:
     // Summation loop over basis functions
     for (int i1shift = 0; i1shift <= 3; ++i1shift) {
       ibas1 = ibas1ref + i1shift;
+      if (bc_arr[idim]==0)
+      {
+        //ibas1 = (ibas1 - 1) % nfem_arr[idim] + 1;
+        ibas1= UtilMath::modulo(ibas1-1,nfem_arr[idim])+1;
+      }
+      
       x1 = x1ref - i1shift;
 
       // Debug output
-      std::cout << ibas1 << " " << x1 << " "
-                << spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim) << std::endl;
+      //std::cout << ibas1 << " " << x1 << " "
+      //          << spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim) <<" "<< fspl[ibas1-1] << std::endl;
 
       // Accumulate weighted spline values
-      output_fval += spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim) * fspl[ibas1];
+      output_fval += spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim) * fspl[ibas1-1];
     }
+    //std::cout << "                                " << output_fval << std::endl;
   }
 
   void spc_cls_set_ms(std::vector<double> &fval) {
@@ -395,12 +402,20 @@ public:
   void spc_cls_splinefit1d(const std::vector<double> &fval,
                            std::vector<double> &fspl) {
     // Resize fspl to match the size of fval if needed
-    if (fspl.size() != fval.size()) {
-      fspl.resize(fval.size());
-    }
+    //if (fspl.size() != fval.size()) {
+    //  fspl.resize(fval.size());
+    //}
 
-    // Copy values from fval to fspl
-    fspl = fval;
+    std::cout<<fval.size()<<" "<<fspl.size()<<std::endl;
+    if (bc_arr[0]==0)
+    {
+      // Copy values from fval to fspl
+      fspl = fval; 
+    }else
+    {
+    // Copy fval into positions [1] to [8] of fspl
+     std::copy(fval.begin(), fval.end(), fspl.begin() + 1);
+    }
   }
   void spc_cls_splinefit2d(const std::vector<double> &fval,
                            std::vector<double> &fspl) {
@@ -607,7 +622,8 @@ public:
 
       ibas = static_cast<int>(std::floor(XX / dz_arr[idirect])) + ishift;
       xloc = XX / dz_arr[idirect] - (ibas - 1);
-      ibas = (ibas - 1) % nfem_arr[idirect] + 1;
+      //ibas = (ibas - 1) % nfem_arr[idirect] + 1;
+      ibas = UtilMath::modulo(ibas - 1, nfem_arr[idirect]) + 1;
 
     } else if (bc_arr[idirect] >= 1) {
       // Handle special case at zmax
@@ -652,6 +668,10 @@ public:
 
     for (i3shift = 0; i3shift <= 3; i3shift++) {
       ibas3 = ibas3ref + i3shift;
+      if (bc_arr[idim3]==0)
+      {
+        ibas3= UtilMath::modulo(ibas3-1,nfem_arr[idim3])+1;
+      }
       x3 = x3ref - i3shift;
       fbas3 = spc_cls_get_fbas_ix(ibas3, x3, idiffz, idim3);
 
@@ -659,11 +679,19 @@ public:
         ibas2 = ibas2ref + i2shift;
         x2 = x2ref - i2shift;
         fbas2 = spc_cls_get_fbas_ix(ibas2, x2, idiffy, idim2);
+        if (bc_arr[idim2]==0)
+        {
+          ibas2= UtilMath::modulo(ibas2-1,nfem_arr[idim2])+1;
+        }
 
         for (i1shift = 0; i1shift <= 3; i1shift++) {
           ibas1 = ibas1ref + i1shift;
           x1 = x1ref - i1shift;
           fbas1 = spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim1);
+          if (bc_arr[idim1]==0)
+          {
+            ibas1= UtilMath::modulo(ibas1-1,nfem_arr[idim1])+1;
+          }
 
           // Compute index for accessing fspl array
           idx = ibas1 + (ibas2 - 1) * nfem_arr[idim1] +

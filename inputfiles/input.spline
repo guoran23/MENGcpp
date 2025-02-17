@@ -1,4 +1,4 @@
-ndim 1
+ndim 3
 nl_debug 1
 bc_arr 2 2 2
 ext_arr 2 2 2

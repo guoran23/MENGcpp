@@ -1,5 +1,10 @@
 #include "util_math.h"
 
+int UtilMath::modulo(int a, int p) {
+  int result = a % p;
+  return (result < 0) ? result + std::abs(p) : result; 
+}
+
 void UtilMath::lgwt(int n, double a, double b, std::vector<double> &x1d,
                     std::vector<double> &w1d) {
   if (n <= 1) {

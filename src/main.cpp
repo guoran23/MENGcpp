@@ -215,6 +215,15 @@ public:
                          spc1d.getExt(0));
       for (int i = 0; i < nqx; i++)
         f_bsp.evaluate1d(xq1d[i], idiffx, fq1d[i]);
+    }else if (ndim==3)
+    {
+      // !=========================3D interpolation=======================
+      if (rank == 0) {
+        std::cout
+            << "--------f_bsp 3d test starts: initialize, evaluate--------"
+            << std::endl;
+      }
+      //f_bsp.initialize3d(spc1d.getZ1d(0), spc1d.getZ1d(1), spc1d.getZ1d(2));
     }
     auto end = std::chrono::high_resolution_clock::now();
     t2 = MPI_Wtime();
