@@ -21,6 +21,8 @@ add_executable(simulation
     ../inih/ini.c
     util_math.cpp
     util_io.cpp
+    SplineCubicNd.cpp
+    SplineCubic2d1f.cpp
 )
 
 # Include headers (including MPI if enabled)

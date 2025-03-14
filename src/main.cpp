@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iostream>
 #include <mpi.h>
+#include <stdexcept>
 // #include <petsc.h>
 
 class Simulation {
@@ -262,6 +263,23 @@ public:
       std::cout << "========== Test SplineNd Ends ==========" << std::endl;
   }
 
+  int testField() {
+    if (rank == 0) {
+        std::cout << "========== Test Field Starts ==========" << std::endl;
+    }
+
+    FieldCls field;
+    try {
+        field.readInput("input.ini");
+    } catch (const std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;  // Return failure status
+    }
+
+    return EXIT_SUCCESS;  // Return success status
+}
+
+
 private:
   MPIManager &mpiManager;
   int rank, size;
@@ -271,6 +289,7 @@ int main(int argc, char **argv) {
   Simulation sim(argc, argv);
   // sim.run();
   // sim.testParticle();
-  sim.testSplineNd();
+  // sim.testSplineNd();
+  sim.testField();
   return 0;
 }

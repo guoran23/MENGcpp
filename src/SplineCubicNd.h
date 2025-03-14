@@ -15,8 +15,8 @@
 #include <mpi.h>
 // #include <petscksp.h>
 #include "MPIManager.h"
-#include "util_math.h"
 #include "util_io.h"
+#include "util_math.h"
 #include <optional>
 #include <vector>
 
@@ -289,8 +289,6 @@ public:
     }
   }
 
-  
-
   void initialize1d(const std::vector<double> &x1d,
                     const std::vector<double> &f1d, int bcx, int extx) {
     constexpr int ndim = 1;
@@ -335,74 +333,136 @@ public:
     idxbc.clear();
     idxdof.clear();
   }
-  void initialize3d(const std::vector<double> &x1d, const std::vector<double> &y1d, const std::vector<double> &z1d,
-    const std::vector<double> &f1d, int bcx, int bcy, int bcz, int extx, int exty, int extz) {
-constexpr int ndim = 3;
-std::array<int, ndim> bc_arr, ext_arr, nnode_arr;
-std::array<double, ndim> zmin_arr, zmax_arr;
-int idim1 = 0; // Zero-based index in C++
-int idim2 = 1; // Zero-based index in C++
-int idim3 = 2; // Zero-based index in C++
-int input_source = 0;
+  void initialize3d(const std::vector<double> &x1d,
+                    const std::vector<double> &y1d,
+                    const std::vector<double> &z1d,
+                    const std::vector<double> &f1d, int bcx, int bcy, int bcz,
+                    int extx, int exty, int extz) {
+    constexpr int ndim = 3;
+    std::array<int, ndim> bc_arr, ext_arr, nnode_arr;
+    std::array<double, ndim> zmin_arr, zmax_arr;
+    int idim1 = 0; // Zero-based index in C++
+    int idim2 = 1; // Zero-based index in C++
+    int idim3 = 2; // Zero-based index in C++
+    int input_source = 0;
 
-// Ensure x1d and f1d have the same size
-if (x1d.size()*y1d.size()*z1d.size() != f1d.size()) {
-std::cerr << "========error: wrong size in initialize3d========"
-<< std::endl;
-return;
-}
+    // Ensure x1d and f1d have the same size
+    if (x1d.size() * y1d.size() * z1d.size() != f1d.size()) {
+      std::cerr << "========error: wrong size in initialize3d========"
+                << std::endl;
+      return;
+    }
 
-bc_arr[idim1] = bcx;
-bc_arr[idim2] = bcy;
-bc_arr[idim3] = bcz;
-ext_arr[idim1] = extx;
-ext_arr[idim2] = exty;
-ext_arr[idim3] = extz;
+    bc_arr[idim1] = bcx;
+    bc_arr[idim2] = bcy;
+    bc_arr[idim3] = bcz;
+    ext_arr[idim1] = extx;
+    ext_arr[idim2] = exty;
+    ext_arr[idim3] = extz;
 
-nnode_arr[idim1] = x1d.size();
-nnode_arr[idim2] = y1d.size();
-nnode_arr[idim3] = z1d.size();
+    nnode_arr[idim1] = x1d.size();
+    nnode_arr[idim2] = y1d.size();
+    nnode_arr[idim3] = z1d.size();
 
-zmin_arr[idim1] = x1d.front(); // First element of x1d
-zmin_arr[idim2] = y1d.front(); // First element of y1d
-zmin_arr[idim3] = z1d.front(); // First element of z1d
+    zmin_arr[idim1] = x1d.front(); // First element of x1d
+    zmin_arr[idim2] = y1d.front(); // First element of y1d
+    zmin_arr[idim3] = z1d.front(); // First element of z1d
 
-if (bc_arr[idim1] == 0) {
-zmax_arr[idim1] = x1d.back() + (x1d[1] - x1d[0]);
-} else if (bc_arr[idim1] >= 1) {
-zmax_arr[idim1] = x1d.back();
-}
+    if (bc_arr[idim1] == 0) {
+      zmax_arr[idim1] = x1d.back() + (x1d[1] - x1d[0]);
+    } else if (bc_arr[idim1] >= 1) {
+      zmax_arr[idim1] = x1d.back();
+    }
 
-if (bc_arr[idim2] == 0) {
-zmax_arr[idim2] = y1d.back() + (y1d[1] - y1d[0]);
-} else if (bc_arr[idim2] >= 1) {
-zmax_arr[idim2] = y1d.back();
-}
+    if (bc_arr[idim2] == 0) {
+      zmax_arr[idim2] = y1d.back() + (y1d[1] - y1d[0]);
+    } else if (bc_arr[idim2] >= 1) {
+      zmax_arr[idim2] = y1d.back();
+    }
 
-if (bc_arr[idim3] == 0) {
-zmax_arr[idim3] = z1d.back() + (z1d[1] - z1d[0]);
-} else if (bc_arr[idim3] >= 1) {
-zmax_arr[idim3] = z1d.back();
-}
+    if (bc_arr[idim3] == 0) {
+      zmax_arr[idim3] = z1d.back() + (z1d[1] - z1d[0]);
+    } else if (bc_arr[idim3] >= 1) {
+      zmax_arr[idim3] = z1d.back();
+    }
 
-// Call the class method spc_cls_init using this-> implicitly
-this->spc_cls_init(input_source, ndim,
-       std::vector<int>(bc_arr.begin(), bc_arr.end()),
-       std::vector<int>(ext_arr.begin(), ext_arr.end()),
-       std::vector<int>(nnode_arr.begin(), nnode_arr.end()),
-       std::vector<double>(zmin_arr.begin(), zmin_arr.end()),
-       std::vector<double>(zmax_arr.begin(), zmax_arr.end()));
+    // Call the class method spc_cls_init using this-> implicitly
+    this->spc_cls_init(input_source, ndim,
+                       std::vector<int>(bc_arr.begin(), bc_arr.end()),
+                       std::vector<int>(ext_arr.begin(), ext_arr.end()),
+                       std::vector<int>(nnode_arr.begin(), nnode_arr.end()),
+                       std::vector<double>(zmin_arr.begin(), zmin_arr.end()),
+                       std::vector<double>(zmax_arr.begin(), zmax_arr.end()));
 
-// Resize fspl instead of allocating memory manually
-fspl.resize(ntotfem);
+    // Resize fspl instead of allocating memory manually
+    fspl.resize(ntotfem);
 
-// Perform spline fitting
-this->spc_cls_splinefitNd(f1d, fspl);
+    // Perform spline fitting
+    this->spc_cls_splinefitNd(f1d, fspl);
 
-// Clear idxbc and idxdof instead of deallocation
-idxbc.clear();
-idxdof.clear();
-}
+    // Clear idxbc and idxdof instead of deallocation
+    idxbc.clear();
+    idxdof.clear();
+  }
+  void initialize2d(const std::vector<double> &x1d,
+                    const std::vector<double> &y1d,
+                    const std::vector<double> &f1d, int bcx, int bcy, int extx,
+                    int exty) {
+    constexpr int ndim = 2;
+    std::array<int, ndim> bc_arr, ext_arr, nnode_arr;
+    std::array<double, ndim> zmin_arr, zmax_arr;
+    int idim1 = 0; // Zero-based index in C++
+    int idim2 = 1; // Zero-based index in C++
+    int input_source = 0;
+
+    // Ensure x1d and f1d have the same size
+    if (x1d.size() * y1d.size() != f1d.size()) {
+      std::cerr << "========error: wrong size in initialize3d========"
+                << std::endl;
+      return;
+    }
+
+    bc_arr[idim1] = bcx;
+    bc_arr[idim2] = bcy;
+    ext_arr[idim1] = extx;
+    ext_arr[idim2] = exty;
+
+    nnode_arr[idim1] = x1d.size();
+    nnode_arr[idim2] = y1d.size();
+
+    zmin_arr[idim1] = x1d.front(); // First element of x1d
+    zmin_arr[idim2] = y1d.front(); // First element of y1d
+
+    if (bc_arr[idim1] == 0) {
+      zmax_arr[idim1] = x1d.back() + (x1d[1] - x1d[0]);
+    } else if (bc_arr[idim1] >= 1) {
+      zmax_arr[idim1] = x1d.back();
+    }
+
+    if (bc_arr[idim2] == 0) {
+      zmax_arr[idim2] = y1d.back() + (y1d[1] - y1d[0]);
+    } else if (bc_arr[idim2] >= 1) {
+      zmax_arr[idim2] = y1d.back();
+    }
+
+    // Call the class method spc_cls_init using this-> implicitly
+    this->spc_cls_init(input_source, ndim,
+                       std::vector<int>(bc_arr.begin(), bc_arr.end()),
+                       std::vector<int>(ext_arr.begin(), ext_arr.end()),
+                       std::vector<int>(nnode_arr.begin(), nnode_arr.end()),
+                       std::vector<double>(zmin_arr.begin(), zmin_arr.end()),
+                       std::vector<double>(zmax_arr.begin(), zmax_arr.end()));
+
+    // Resize fspl instead of allocating memory manually
+    fspl.resize(ntotfem);
+
+    // Perform spline fitting
+    this->spc_cls_splinefitNd(f1d, fspl);
+
+    // Clear idxbc and idxdof instead of deallocation
+    idxbc.clear();
+    idxdof.clear();
+  }
   void evaluate1d(double XX, int idiffx, double &output_fval) const {
     int idim = 0; // Fixed for 1D case
     output_fval = 0.0;
@@ -416,22 +476,24 @@ idxdof.clear();
     // Summation loop over basis functions
     for (int i1shift = 0; i1shift <= 3; ++i1shift) {
       ibas1 = ibas1ref + i1shift;
-      if (bc_arr[idim]==0)
-      {
-        //ibas1 = (ibas1 - 1) % nfem_arr[idim] + 1;
-        ibas1= UtilMath::modulo(ibas1-1,nfem_arr[idim])+1;
+      if (bc_arr[idim] == 0) {
+        // ibas1 = (ibas1 - 1) % nfem_arr[idim] + 1;
+        ibas1 = UtilMath::modulo(ibas1 - 1, nfem_arr[idim]) + 1;
       }
-      
+
       x1 = x1ref - i1shift;
 
       // Debug output
-      //std::cout << ibas1 << " " << x1 << " "
-      //          << spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim) <<" "<< fspl[ibas1-1] << std::endl;
+      // std::cout << ibas1 << " " << x1 << " "
+      //          << spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim) <<" "<<
+      //          fspl[ibas1-1] << std::endl;
 
       // Accumulate weighted spline values
-      output_fval += spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim) * fspl[ibas1-1];
+      output_fval +=
+          spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim) * fspl[ibas1 - 1];
     }
-    //std::cout << "                                " << output_fval << std::endl;
+    // std::cout << "                                " << output_fval <<
+    // std::endl;
   }
 
   void spc_cls_set_ms(std::vector<double> &fval) {
@@ -462,7 +524,8 @@ idxdof.clear();
         }
       }
     } else {
-      std::cerr << "======== Error: ndim="<<ndim<<" > 3 not implemented in spc_cls_set_ms "
+      std::cerr << "======== Error: ndim=" << ndim
+                << " > 3 not implemented in spc_cls_set_ms "
                    "========"
                 << std::endl;
     }
@@ -477,7 +540,8 @@ idxdof.clear();
     } else if (ndim == 3) {
       spc_cls_splinefit3d(fval, fspl); // Call 2D or 3D spline fitting
     } else {
-      std::cerr << "======== Error: ndim="<<ndim<<" > 3 not implemented in spc_cls_splinefitNd "
+      std::cerr << "======== Error: ndim=" << ndim
+                << " > 3 not implemented in spc_cls_splinefitNd "
                    "========"
                 << std::endl;
     }
@@ -486,19 +550,17 @@ idxdof.clear();
   void spc_cls_splinefit1d(const std::vector<double> &fval,
                            std::vector<double> &fspl) {
     // Resize fspl to match the size of fval if needed
-    //if (fspl.size() != fval.size()) {
+    // if (fspl.size() != fval.size()) {
     //  fspl.resize(fval.size());
     //}
 
-    std::cout<<fval.size()<<" "<<fspl.size()<<std::endl;
-    if (bc_arr[0]==0)
-    {
+    std::cout << fval.size() << " " << fspl.size() << std::endl;
+    if (bc_arr[0] == 0) {
       // Copy values from fval to fspl
-      fspl = fval; 
-    }else
-    {
-    // Copy fval into positions [1] to [8] of fspl
-     std::copy(fval.begin(), fval.end(), fspl.begin() + 1);
+      fspl = fval;
+    } else {
+      // Copy fval into positions [1] to [8] of fspl
+      std::copy(fval.begin(), fval.end(), fspl.begin() + 1);
     }
   }
   void spc_cls_splinefit2d(const std::vector<double> &fval,
@@ -508,28 +570,24 @@ idxdof.clear();
     int fic, fjc;
     int idxspl, idxval;
 
-    if (bc_arr[0] ==0)
-    {
-      ishift=0;
-    }else
-    {
-      ishift=1;
+    if (bc_arr[0] == 0) {
+      ishift = 0;
+    } else {
+      ishift = 1;
     }
-    if (bc_arr[1] ==0)
-    {
-      jshift=0;
-    }else
-    {
-      jshift=1;
+    if (bc_arr[1] == 0) {
+      jshift = 0;
+    } else {
+      jshift = 1;
     }
-    
+
     for (int fic = 0; fic < nnode_arr[0]; ++fic) {
       for (int fjc = 0; fjc < nnode_arr[1]; ++fjc) {
 
-          idxval = fic + fjc * nnode_arr[0];
-          idxspl = (fic + ishift) + (fjc + jshift) * nfem_arr[0];
+        idxval = fic + fjc * nnode_arr[0];
+        idxspl = (fic + ishift) + (fjc + jshift) * nfem_arr[0];
 
-          fspl[idxspl] = fval[idxval];
+        fspl[idxspl] = fval[idxval];
       }
     }
   }
@@ -539,34 +597,29 @@ idxdof.clear();
     int fic, fjc, fkc;
     int idxspl, idxval;
 
-    if (bc_arr[0] ==0)
-    {
-      ishift=0;
-    }else
-    {
-      ishift=1;
+    if (bc_arr[0] == 0) {
+      ishift = 0;
+    } else {
+      ishift = 1;
     }
-    if (bc_arr[1] ==0)
-    {
-      jshift=0;
-    }else
-    {
-      jshift=1;
+    if (bc_arr[1] == 0) {
+      jshift = 0;
+    } else {
+      jshift = 1;
     }
-    if (bc_arr[2] ==0)
-    {
-      kshift=0;
-    }else
-    {
-      kshift=1;
+    if (bc_arr[2] == 0) {
+      kshift = 0;
+    } else {
+      kshift = 1;
     }
-    
+
     for (int fic = 0; fic < nnode_arr[0]; ++fic) {
       for (int fjc = 0; fjc < nnode_arr[1]; ++fjc) {
         for (int fkc = 0; fkc < nnode_arr[2]; ++fkc) {
 
           idxval = fic + fjc * nnode_arr[0] + fkc * nnode_arr[0] * nnode_arr[1];
-          idxspl = (fic + ishift) + (fjc + jshift) * nfem_arr[0] + (fkc + kshift) * nfem_arr[0] * nfem_arr[1];
+          idxspl = (fic + ishift) + (fjc + jshift) * nfem_arr[0] +
+                   (fkc + kshift) * nfem_arr[0] * nfem_arr[1];
 
           fspl[idxspl] = fval[idxval];
         }
@@ -631,8 +684,8 @@ idxdof.clear();
         }
       }
     } else {
-      std::cerr << "======== Error in initBC: ndim ="<< ndim <<" > 3 not implemented ========"
-                << std::endl;
+      std::cerr << "======== Error in initBC: ndim =" << ndim
+                << " > 3 not implemented ========" << std::endl;
       return;
     }
 
@@ -768,7 +821,7 @@ idxdof.clear();
 
       ibas = static_cast<int>(std::floor(XX / dz_arr[idirect])) + ishift;
       xloc = XX / dz_arr[idirect] - (ibas - 1);
-      //ibas = (ibas - 1) % nfem_arr[idirect] + 1;
+      // ibas = (ibas - 1) % nfem_arr[idirect] + 1;
       ibas = UtilMath::modulo(ibas - 1, nfem_arr[idirect]) + 1;
 
     } else if (bc_arr[idirect] >= 1) {
@@ -778,7 +831,7 @@ idxdof.clear();
         xloc = 1.0;
         return;
       }
-      
+
       ibas = static_cast<int>(std::floor(XX / dz_arr[idirect])) + ishift + 1;
 
       if (ibas <= 0) {
@@ -795,9 +848,56 @@ idxdof.clear();
     }
   }
 
+  void evaluate2d(double XX, double YY, int idiffx, int idiffy,
+                  double &output_fval) {
+    double x1, x2, x3, fbas1, fbas2, fbas3, x1ref, x2ref;
+    int ibas1, i1shift, ibas1ref, ibas2ref, ibas3ref;
+    int ibas2, i2shift, ibas3, i3shift;
+    constexpr int idim1 = 0, idim2 = 1;
+    int idx;
+
+    // Reset fval array to zero
+    // std::fill(fval.begin(), fval.end(), 0.0);
+    output_fval = 0.0;
+
+    // Convert global to local indices
+    spc_cls_glb2loc(XX, idim1, 0, ibas1ref, x1ref);
+    spc_cls_glb2loc(YY, idim2, 0, ibas2ref, x2ref);
+
+    for (i2shift = 0; i2shift <= 3; i2shift++) {
+      ibas2 = ibas2ref + i2shift;
+      x2 = x2ref - i2shift;
+      fbas2 = spc_cls_get_fbas_ix(ibas2, x2, idiffy, idim2);
+      if (bc_arr[idim2] == 0) {
+        ibas2 = UtilMath::modulo(ibas2 - 1, nfem_arr[idim2]) + 1;
+      }
+
+      for (i1shift = 0; i1shift <= 3; i1shift++) {
+        ibas1 = ibas1ref + i1shift;
+        x1 = x1ref - i1shift;
+        fbas1 = spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim1);
+        if (bc_arr[idim1] == 0) {
+          ibas1 = UtilMath::modulo(ibas1 - 1, nfem_arr[idim1]) + 1;
+        }
+
+        // Compute index for accessing fspl array
+        idx = ibas1 + (ibas2 - 1) * nfem_arr[idim1] +
+              (ibas3 - 1) * nfem_arr[idim1] * nfem_arr[idim2];
+
+        // Ensure fval has enough space
+        if (idx >= fval.size()) {
+          fval.resize(idx + 1, 0.0);
+        }
+
+        // fval[idx] += fbas1 * fbas2 * fbas3 * fspl[idx];
+        output_fval += fbas1 * fbas2 * fspl[idx];
+      }
+    }
+  }
+
   //
   void evaluate3d(double XX, double YY, double ZZ, int idiffx, int idiffy,
-                  int idiffz,double &output_fval) {
+                  int idiffz, double &output_fval) {
     double x1, x2, x3, fbas1, fbas2, fbas3, x1ref, x2ref, x3ref;
     int ibas1, i1shift, ibas1ref, ibas2ref, ibas3ref;
     int ibas2, i2shift, ibas3, i3shift;
@@ -805,7 +905,7 @@ idxdof.clear();
     int idx;
 
     // Reset fval array to zero
-    //std::fill(fval.begin(), fval.end(), 0.0);
+    // std::fill(fval.begin(), fval.end(), 0.0);
     output_fval = 0.0;
 
     // Convert global to local indices
@@ -815,9 +915,8 @@ idxdof.clear();
 
     for (i3shift = 0; i3shift <= 3; i3shift++) {
       ibas3 = ibas3ref + i3shift;
-      if (bc_arr[idim3]==0)
-      {
-        ibas3= UtilMath::modulo(ibas3-1,nfem_arr[idim3])+1;
+      if (bc_arr[idim3] == 0) {
+        ibas3 = UtilMath::modulo(ibas3 - 1, nfem_arr[idim3]) + 1;
       }
       x3 = x3ref - i3shift;
       fbas3 = spc_cls_get_fbas_ix(ibas3, x3, idiffz, idim3);
@@ -826,18 +925,16 @@ idxdof.clear();
         ibas2 = ibas2ref + i2shift;
         x2 = x2ref - i2shift;
         fbas2 = spc_cls_get_fbas_ix(ibas2, x2, idiffy, idim2);
-        if (bc_arr[idim2]==0)
-        {
-          ibas2= UtilMath::modulo(ibas2-1,nfem_arr[idim2])+1;
+        if (bc_arr[idim2] == 0) {
+          ibas2 = UtilMath::modulo(ibas2 - 1, nfem_arr[idim2]) + 1;
         }
 
         for (i1shift = 0; i1shift <= 3; i1shift++) {
           ibas1 = ibas1ref + i1shift;
           x1 = x1ref - i1shift;
           fbas1 = spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim1);
-          if (bc_arr[idim1]==0)
-          {
-            ibas1= UtilMath::modulo(ibas1-1,nfem_arr[idim1])+1;
+          if (bc_arr[idim1] == 0) {
+            ibas1 = UtilMath::modulo(ibas1 - 1, nfem_arr[idim1]) + 1;
           }
 
           // Compute index for accessing fspl array
@@ -849,7 +946,7 @@ idxdof.clear();
             fval.resize(idx + 1, 0.0);
           }
 
-          //fval[idx] += fbas1 * fbas2 * fbas3 * fspl[idx];
+          // fval[idx] += fbas1 * fbas2 * fbas3 * fspl[idx];
           output_fval += fbas1 * fbas2 * fbas3 * fspl[idx];
         }
       }
@@ -979,17 +1076,5 @@ private:
   double fbas_ed_left(double x) const;
 };
 
-// Example implementation of selected methods
-SplineCubicNdCls::SplineCubicNdCls() : ndim(0), norder(4), nl_debug(false) {
-  // Default constructor initialization
-  MPIManager &mpiManager = MPIManager::getInstance(); // 获取MPIManager的实例
-  rank = mpiManager.getRank(); // 获取当前进程的rank
-  size = mpiManager.getSize(); // 获取总的进程数};
-}
-
-void SplineCubicNdCls::initialize1d(const std::vector<double> &knots) {
-  xknot = knots;
-  // Additional 1D initialization
-}
 
 #endif // SPLINECUBICND_H
