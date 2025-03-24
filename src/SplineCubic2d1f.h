@@ -20,7 +20,7 @@ private:
   SplineCubicNdCls spline2d; // 组合一个 Nd 版本的样条类
   std::vector<int> ntor1d;   // toroidal modes
   int ndim = 3;              // Number of dimensions
-  int norder;                // Spline order (e.g., 4 for cubic)
+  int norder = 4;                // Spline order (e.g., 4 for cubic)
   int nintg;                 // Integration points
   int nintg_tot;             // Total integration points
   double xshift;             // Coordinate shift
@@ -53,7 +53,7 @@ private:
   std::vector<int> idxdof; // Free DOF indices
 
   // index of boundary and free nodes
-  int ntot12fem; 
+  int ntot12fem, ntot12dof;
 
   // Control parameters
   bool nl_debug; // Debug flag
@@ -76,10 +76,16 @@ private:
 public:
   // geters
   const std::vector<int> &getNtor1d() const { return ntor1d; }
+  const int get_ntot12fem() const { return ntot12fem; }
+  const int get_ntot12dof() const { return ntot12dof; }
+  const int get_ntotdof() const { return ntotdof; }
+  const int get_ntotfem() const { return ntotfem; }
   // Constructor, initializing the spline2d object
   SplineCubic2d1f();  // Declaration of the default constructor
   SplineCubic2d1f(int input_source, const int bc_arr[3], const int nnode_arr[3],
                      const double zmin_arr[3], const double zmax_arr[3], bool nl_debug);
+
+  void spc_cls_calc_idxdof2d1f(int lenntor, std::vector<int>& idxdof2d1f);
 
   void spc_cls_sp2p2d1f(const std::vector<std::complex<double>> &f1d,
                         const std::vector<int> &ntor1d,

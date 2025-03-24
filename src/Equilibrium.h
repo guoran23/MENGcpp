@@ -13,6 +13,7 @@
 #define EQUILIBRIUM_H
 
 #include "../inih/INIReader.h"
+#include "constants.h"
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -80,14 +81,23 @@ public:
     set_zerof = reader.GetBoolean("Equilibrium", "set_zerof", false);
     fname = reader.Get("Equilibrium", "fname", "");
     profilename = reader.Get("Equilibrium", "profilename", "");
-    rhoN = reader.GetReal("Equilibrium", "rhoN", 0.0);
+    isource_ref = reader.GetInteger("Equilibrium", "isource_ref", 1);
+    rhoN = reader.GetReal("Equilibrium", "rhoN", 0.01);
+    betaN = reader.GetReal("Equilibrium", "betaN", 1e-6);
+    nref = reader.GetReal("Equilibrium", "nref", 1e19);
+    Tref = reader.GetReal("Equilibrium", "Tref", 1000.0);
     Bref = reader.GetReal("Equilibrium", "Bref", 1.0);
 
     rmaxis = rmaxis_adhoc;
     Bmaxis = Bmaxis_adhoc;
 
+    
+
     // Optional: Add validation and other logic
     validateInputs();
+
+    equil_cls_calc_derived(0);
+    equil_cls_showinfo(0);
   }
 
   void printState() const {
@@ -173,8 +183,7 @@ public:
 
   // methods
   void equil_cls_init();
-  void equil_cls_readinput();
-  void equil_cls_calc_derived();
+  void equil_cls_calc_derived(int rank);
 
   // (R,Z) functions
   double getradRZ(double R, double Z) const;

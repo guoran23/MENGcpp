@@ -27,8 +27,7 @@
 #include <vector>
 // #include <petsc.h>
 
-constexpr double pi = M_PI;
-constexpr double twopi = 2 * M_PI;
+
 void setbuffcoef(const std::array<double, 2>& rminbuff, std::array<double, 4>& coefminbuff);
 
 class FieldCls {
@@ -96,12 +95,12 @@ public:
 
   // Methods
   void readInput(const std::string &inputFile);
-  void field_cls_init(Equilibrium &equ);
+  void field_cls_init(const Equilibrium &equ);
   void field_cls_set_parms();
   double field_cls_get_fbuff(double rad, const std::array<double, 2> &rbuff,
                              const std::array<double, 4> &coef,
                              bool left) const;
-  void field_cls_link2eq(Equilibrium &equ);
+  void field_cls_link2eq(const Equilibrium &equ);
   void field_cls_g2p2d1f_general(
       const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
       const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
@@ -130,6 +129,8 @@ public:
     int nnode_arr[3] = {nrad, nthe, nphi};
     double zmin_arr[3] = {radmin, themin, phimin};
     double zmax_arr[3] = {radmax, themax, phimax};
+
+    std::cout << "Initializing SplineCubic2d1f object..." << std::endl;
 
     spc = SplineCubic2d1f(0, bc_arr, nnode_arr, zmin_arr, zmax_arr, nl_debug);
 

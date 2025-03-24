@@ -28,7 +28,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build_MPI/bin/simulation",
             "args": [],
-            "stopAtEntry": true,
+            "stopAtEntry": false,
             "cwd": "${workspaceFolder}/inputfiles/",
             "environment": [],
             "externalConsole": false,

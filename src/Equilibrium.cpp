@@ -11,7 +11,6 @@
 
 #include "Equilibrium.h"
 
-
 Equilibrium::Equilibrium(double p, double t) : pressure(p), temperature(t) {}
 
 double Equilibrium::getPressure() const { return pressure; }
@@ -34,7 +33,7 @@ void Equilibrium::writeWallRZ() const {
   std::array<double, nbbbs> theta;
   std::array<double, nbbbs> rbbbs, zbbbs;
   double rad = 1.0;
-  double dtheta = 2.0 * M_PI / static_cast<double>(nbbbs - 1); 
+  double dtheta = 2.0 * M_PI / static_cast<double>(nbbbs - 1);
 
   for (std::size_t i = 0; i < nbbbs; ++i) {
     theta[i] = -M_PI + i * dtheta;
@@ -69,6 +68,39 @@ void Equilibrium::writeWallRZ() const {
   //     }
   //     file.close();
   // }
+}
+
+void Equilibrium::equil_cls_calc_derived(int rank) {
+  double vA, vth;
+
+  if (rank == 0) {
+    std::cout << ">>>>CALC_DERIVED, ISOURCE_REF= " << isource_ref << std::endl;
+  }
+
+  if (isource_ref == 1) {
+    //giving rhoN betaN to derive nref, Tref
+    Tref = (rhoN * charge_unit * Bref) * (rhoN * charge_unit * Bref) /
+           (2.0 * mass_unit * charge_unit);
+    nref = betaN * Bref * Bref / (2.0 * Tref * charge_unit * mu0);
+
+    // Extra Info
+    vA = Bref / std::sqrt(mu0 * nref * mass_unit);
+    vth = std::sqrt(2.0 * Tref * charge_unit / mass_unit);
+  } else if (isource_ref == 2) {
+    //giving nref, Tref to derive rhoN betaN
+    vA = Bref / std::sqrt(mu0 * nref * mass_unit);
+    vth = std::sqrt(2.0 * Tref * charge_unit / mass_unit);
+
+    rhoN =
+        std::sqrt(2.0 * mass_unit * Tref * charge_unit) / (charge_unit * Bref);
+    betaN = (vth * vth) / (vA * vA);
+  }
+
+  if (rank == 0) {
+    std::cout << ">> vA=" << vA << ", vth=" << vth << ", rhoN=" << rhoN
+              << ", betaN=" << betaN << ", nref=" << nref << ", Tref=" << Tref
+              << std::endl;
+  }
 }
 
 void Equilibrium::equil_cls_showinfo(int rank) {

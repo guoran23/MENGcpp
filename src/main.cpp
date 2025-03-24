@@ -11,6 +11,7 @@
 
 #include "Equilibrium.h"
 #include "Field.h"
+#include "FieldExt.h"
 #include "MPIManager.h"
 #include "Particle.h"
 #include "SplineCubicNd.h"
@@ -268,14 +269,28 @@ public:
         std::cout << "========== Test Field Starts ==========" << std::endl;
     }
 
-    FieldCls field;
-    try {
-        field.readInput("input.ini");
-    } catch (const std::exception &e) {
-        std::cerr << e.what() << std::endl;
-        return EXIT_FAILURE;  // Return failure status
-    }
+    
+    Equilibrium equ;
+    equ.readInput("input.ini");
+    // FieldCls field;
+    // field.field_cls_init(equ);
+    std::vector<ParticleSpecies> particleList; // Create the actual vector
+    std::vector<ParticleSpecies>& pt = particleList; // Reference to it
 
+    FieldExtCls fd;
+    std::cout << "========Init,Test FieldExt========"
+              << std::endl;
+    fd.field_cls_init(equ);
+    fd.init(equ, pt);
+
+    
+    // try {
+    //     field.readInput("input.ini");
+    // } catch (const std::exception &e) {
+    //     std::cerr << e.what() << std::endl;
+    //     return EXIT_FAILURE;  // Return failure status
+    // }
+    
     return EXIT_SUCCESS;  // Return success status
 }
 

@@ -30,7 +30,7 @@ const double TWOPI = 2.0 * M_PI;
 class SplineCubicNdCls {
 private:
   int ndim;      // Number of dimensions
-  int norder;    // Spline order (e.g., 4 for cubic)
+  int norder = 4;    // Spline order (e.g., 4 for cubic)
   int nintg;     // Integration points
   int nintg_tot; // Total integration points
   double xshift; // Coordinate shift
@@ -124,7 +124,7 @@ public:
                     std::vector<double> zmax = {},
                     std::optional<bool> debug = std::nullopt) {
     // control parameters
-    nl_debug = true;
+    nl_debug = false;
 
     // constants
     norder = 4;
@@ -266,6 +266,10 @@ public:
 
     // Boundary conditions
     initBC();
+
+    // Allocate memory for fval and fspl
+    fval.resize(ntotnode);
+    fspl.resize(ntotfem); // Initialize to zero
 
     // Display info
     showInfo();
@@ -417,7 +421,10 @@ public:
 
     // Ensure x1d and f1d have the same size
     if (x1d.size() * y1d.size() != f1d.size()) {
-      std::cerr << "========error: wrong size in initialize3d========"
+      std::cout << "x1d.size =" << x1d.size() << std::endl;
+      std::cout << "y1d.size =" << y1d.size() << std::endl;
+      std::cout << "f1d.size =" << f1d.size() << std::endl;
+      std::cerr << "========error: wrong size in initialize2d========"
                 << std::endl;
       return;
     }

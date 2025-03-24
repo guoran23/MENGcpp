@@ -33,10 +33,11 @@ double Field::calculateForce(double charge) const {
 }
 
 // Definition of field_cls_init
-void FieldCls::field_cls_init(Equilibrium &equ) {
+void FieldCls::field_cls_init(const Equilibrium &equ) {
   if (rank == 0) {
     std::cout << "======== FieldCls Initialization ========" << std::endl;
   }
+  
   // Set class parameters
   field_cls_set_parms();
 
@@ -48,7 +49,7 @@ void FieldCls::field_cls_init(Equilibrium &equ) {
   }
 }
 
-void FieldCls::field_cls_link2eq(Equilibrium &equ) {
+void FieldCls::field_cls_link2eq(const Equilibrium &equ) {
   // Compute physical parameters based on equilibrium class
   Cpoisson = 1.0 / (equ.rhoN * equ.rhoN);
   Campere =
@@ -99,6 +100,13 @@ void FieldCls::field_cls_set_parms() {
   // Assign values to the class members
   readInput("input.ini");
 
+  //
+  //
+  // const int bc_arr[3] = {bcrad, 0, 0};
+  // const int nnode_arr[3] = {nrad, nthe, nphi};
+  // const double zmin_arr[3] = {radmin, themin, phimin};
+  // const double zmax_arr[3] = {radmax, themax, phimax};
+  
   // Derived parameters
   rbufftmp[0] = this->rminbuff[1];
   rbufftmp[1] = this->rminbuff[0];
