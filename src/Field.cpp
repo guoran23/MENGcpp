@@ -12,14 +12,14 @@
 #include "Field.h"
 
 void setbuffcoef(const std::array<double, 2> &rminbuff,
-    std::array<double, 4> &coefminbuff) {
-// Compute coefficients based on rminbuff values
-coefminbuff[3] = -2.0 / std::pow(rminbuff[0] - rminbuff[1], 3);
-coefminbuff[2] = -1.5 * (rminbuff[0] + rminbuff[1]) * coefminbuff[3];
-coefminbuff[1] = 3.0 * rminbuff[0] * rminbuff[1] * coefminbuff[3];
-coefminbuff[0] = -coefminbuff[1] * rminbuff[1] -
-      coefminbuff[2] * std::pow(rminbuff[1], 2) -
-      coefminbuff[3] * std::pow(rminbuff[1], 3);
+                 std::array<double, 4> &coefminbuff) {
+  // Compute coefficients based on rminbuff values
+  coefminbuff[3] = -2.0 / std::pow(rminbuff[0] - rminbuff[1], 3);
+  coefminbuff[2] = -1.5 * (rminbuff[0] + rminbuff[1]) * coefminbuff[3];
+  coefminbuff[1] = 3.0 * rminbuff[0] * rminbuff[1] * coefminbuff[3];
+  coefminbuff[0] = -coefminbuff[1] * rminbuff[1] -
+                   coefminbuff[2] * std::pow(rminbuff[1], 2) -
+                   coefminbuff[3] * std::pow(rminbuff[1], 3);
 }
 
 Field::Field(double strength) : fieldStrength(strength) {}
@@ -37,12 +37,20 @@ void FieldCls::field_cls_init(const Equilibrium &equ) {
   if (rank == 0) {
     std::cout << "======== FieldCls Initialization ========" << std::endl;
   }
-  
+
   // Set class parameters
   field_cls_set_parms();
 
   // Link the field class to the equilibrium class
   field_cls_link2eq(equ);
+  int bc_arr[3] = {1, 0, 0};
+  int nnode_arr[3] = {nrad, nthe, nphi};
+  double zmin_arr[3] = {radmin, themin, phimin};
+  double zmax_arr[3] = {radmax, themax, phimax};
+
+  std::cout << "Initializing SplineCubic2d1f object..." << std::endl;
+
+  spc = SplineCubic2d1f(0, bc_arr, nnode_arr, zmin_arr, zmax_arr, nl_debug);
   // Print memory usage details
   if (rank == 0) {
     std::cout << "Field Class size: " << sizeof(*this) << " Byte " << std::endl;
@@ -106,7 +114,7 @@ void FieldCls::field_cls_set_parms() {
   // const int nnode_arr[3] = {nrad, nthe, nphi};
   // const double zmin_arr[3] = {radmin, themin, phimin};
   // const double zmax_arr[3] = {radmax, themax, phimax};
-  
+
   // Derived parameters
   rbufftmp[0] = this->rminbuff[1];
   rbufftmp[1] = this->rminbuff[0];

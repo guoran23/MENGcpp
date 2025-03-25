@@ -69,10 +69,16 @@ void FieldExtCls::init(const Equilibrium& equ, std::vector<ParticleSpecies>& pt)
 
     this->ntotfem2d1f = this->lenntor * this->spc.get_ntot12fem();
     this->ntotdof2d1f = this->lenntor * this->spc.get_ntot12dof();
+    std::cout << "lenntor=" << this->lenntor << std::endl;
+    std::cout << "ntot12fem=" << this->spc.get_ntot12fem() << std::endl;
+    std::cout << "ntot12dof=" << this->spc.get_ntot12dof() << std::endl;
+    std::cout << "ntotfem2d1f=" << this->ntotfem2d1f << std::endl;
+    std::cout << "ntotdof2d1f=" << this->ntotdof2d1f << std::endl;
 
     // Allocate index array
     this->idxdof2d1f.resize(this->ntotdof2d1f);
     this->spc.spc_cls_calc_idxdof2d1f(this->lenntor, this->idxdof2d1f);
+
 
     // Allocate field and moment arrays
     this->denskMkj.resize(this->ntotfem2d1f);

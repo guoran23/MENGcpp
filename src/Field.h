@@ -124,18 +124,8 @@ public:
     MPIManager &mpiManager = MPIManager::getInstance();
     rank = mpiManager.getRank();
     size = mpiManager.getSize();
-
-    int bc_arr[3] = {1, 0, 0};
-    int nnode_arr[3] = {nrad, nthe, nphi};
-    double zmin_arr[3] = {radmin, themin, phimin};
-    double zmax_arr[3] = {radmax, themax, phimax};
-
-    std::cout << "Initializing SplineCubic2d1f object..." << std::endl;
-
-    spc = SplineCubic2d1f(0, bc_arr, nnode_arr, zmin_arr, zmax_arr, nl_debug);
-
-    // Initialize field_cls with the equ object
-    field_cls_init(equ);
+    std::cout << "FieldCls default constructor called"
+                << std::endl; // For debugging    
   }
 };
 

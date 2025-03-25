@@ -280,7 +280,7 @@ public:
     FieldExtCls fd;
     std::cout << "========Init,Test FieldExt========"
               << std::endl;
-    fd.field_cls_init(equ);
+    // fd.field_cls_init(equ);
     fd.init(equ, pt);
 
     
