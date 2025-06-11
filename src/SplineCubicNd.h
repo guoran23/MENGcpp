@@ -29,11 +29,11 @@ const double TWOPI = 2.0 * M_PI;
 
 class SplineCubicNdCls {
 private:
-  int ndim;      // Number of dimensions
-  int norder = 4;    // Spline order (e.g., 4 for cubic)
-  int nintg;     // Integration points
-  int nintg_tot; // Total integration points
-  double xshift; // Coordinate shift
+  int ndim;       // Number of dimensions
+  int norder = 4; // Spline order (e.g., 4 for cubic)
+  int nintg;      // Integration points
+  int nintg_tot;  // Total integration points
+  double xshift;  // Coordinate shift
 
   std::vector<double> xknot;  // Knot vector
   std::vector<double> xx_tot; // Total coordinates
@@ -180,6 +180,7 @@ public:
       if (dim.has_value()) {
         ndim = dim.value();
       }
+      std::cout << "ndim = " << ndim << std::endl;
       if (debug.has_value()) {
         nl_debug = debug.value();
       }
@@ -266,6 +267,14 @@ public:
 
     // Boundary conditions
     initBC();
+    //
+    std::cout << "== Debug info before fspl allocation ==" << std::endl;
+    for (int i = 0; i < ndim; ++i) {
+      std::cout << "nnode_arr[" << i << "] = " << nnode_arr[i] << std::endl;
+      std::cout << "nfem_arr[" << i << "] = " << nfem_arr[i] << std::endl;
+    }
+    std::cout << "ntotfem = " << ntotfem << std::endl;
+    std::cout << "ntotnode = " << ntotnode << std::endl;
 
     // Allocate memory for fval and fspl
     fval.resize(ntotnode);
@@ -452,6 +461,11 @@ public:
       zmax_arr[idim2] = y1d.back();
     }
 
+    print_vector("bc_arr", bc_arr);
+    print_vector("ext_arr", ext_arr);
+    print_vector("nnode_arr", nnode_arr);
+    print_vector("zmin_arr", zmin_arr);
+    print_vector("zmax_arr", zmax_arr);
     // Call the class method spc_cls_init using this-> implicitly
     this->spc_cls_init(input_source, ndim,
                        std::vector<int>(bc_arr.begin(), bc_arr.end()),
@@ -469,38 +483,6 @@ public:
     // Clear idxbc and idxdof instead of deallocation
     idxbc.clear();
     idxdof.clear();
-  }
-  void evaluate1d(double XX, int idiffx, double &output_fval) const {
-    int idim = 0; // Fixed for 1D case
-    output_fval = 0.0;
-
-    int ibas1ref, ibas1;
-    double x1ref, x1;
-
-    // Convert global coordinate to local
-    spc_cls_glb2loc(XX, idim, 0, ibas1ref, x1ref);
-
-    // Summation loop over basis functions
-    for (int i1shift = 0; i1shift <= 3; ++i1shift) {
-      ibas1 = ibas1ref + i1shift;
-      if (bc_arr[idim] == 0) {
-        // ibas1 = (ibas1 - 1) % nfem_arr[idim] + 1;
-        ibas1 = UtilMath::modulo(ibas1 - 1, nfem_arr[idim]) + 1;
-      }
-
-      x1 = x1ref - i1shift;
-
-      // Debug output
-      // std::cout << ibas1 << " " << x1 << " "
-      //          << spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim) <<" "<<
-      //          fspl[ibas1-1] << std::endl;
-
-      // Accumulate weighted spline values
-      output_fval +=
-          spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim) * fspl[ibas1 - 1];
-    }
-    // std::cout << "                                " << output_fval <<
-    // std::endl;
   }
 
   void spc_cls_set_ms(std::vector<double> &fval) {
@@ -766,6 +748,7 @@ public:
 
     std::string line;
     std::cout << "--------Readinput starts--------" << std::endl;
+    std::cout << "Reading input from " << filename << std::endl;
 
     // Read general parameters
     while (std::getline(infile, line)) {
@@ -812,6 +795,31 @@ public:
     // Copy values
     std::cout << "ndim: " << ndim << std::endl;
     std::cout << "nl_debug: " << nl_debug << std::endl;
+    std::cout << "bc_arr: ";
+    for (const auto &val : bc_arr) {
+      std::cout << val << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "ext_arr: ";
+    for (const auto &val : ext_arr) {
+      std::cout << val << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "nnode_arr: ";
+    for (const auto &val : nnode_arr) {
+      std::cout << val << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "zmin_arr: ";
+    for (const auto &val : zmin_arr) {
+      std::cout << val << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "zmax_arr: ";
+    for (const auto &val : zmax_arr) {
+      std::cout << val << " ";
+    }
+    std::cout << std::endl;
 
     std::cout << "--------Readinput ends--------" << std::endl;
   }
@@ -855,11 +863,44 @@ public:
     }
   }
 
+  void evaluate1d(double XX, int idiffx, double &output_fval) const {
+    int idim = 0; // Fixed for 1D case
+    output_fval = 0.0;
+
+    int ibas1ref, ibas1;
+    double x1ref, x1;
+
+    // Convert global coordinate to local
+    spc_cls_glb2loc(XX, idim, 0, ibas1ref, x1ref);
+
+    // Summation loop over basis functions
+    for (int i1shift = 0; i1shift <= 3; ++i1shift) {
+      ibas1 = ibas1ref + i1shift;
+      if (bc_arr[idim] == 0) {
+        // ibas1 = (ibas1 - 1) % nfem_arr[idim] + 1;
+        ibas1 = UtilMath::modulo(ibas1 - 1, nfem_arr[idim]) + 1;
+      }
+
+      x1 = x1ref - i1shift;
+
+      // Debug output
+      // std::cout << ibas1 << " " << x1 << " "
+      //          << spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim) <<" "<<
+      //          fspl[ibas1-1] << std::endl;
+
+      // Accumulate weighted spline values
+      output_fval +=
+          spc_cls_get_fbas_ix(ibas1, x1, idiffx, idim) * fspl[ibas1 - 1];
+    }
+    // std::cout << "                                " << output_fval <<
+    // std::endl;
+  }
+
   void evaluate2d(double XX, double YY, int idiffx, int idiffy,
                   double &output_fval) {
-    double x1, x2, x3, fbas1, fbas2, fbas3, x1ref, x2ref;
-    int ibas1, i1shift, ibas1ref, ibas2ref, ibas3ref;
-    int ibas2, i2shift, ibas3, i3shift;
+    double x1, x2, fbas1, fbas2, x1ref, x2ref;
+    int ibas1, i1shift, ibas1ref, ibas2ref;
+    int ibas2, i2shift;
     constexpr int idim1 = 0, idim2 = 1;
     int idx;
 
@@ -888,15 +929,13 @@ public:
         }
 
         // Compute index for accessing fspl array
-        idx = ibas1 + (ibas2 - 1) * nfem_arr[idim1] +
-              (ibas3 - 1) * nfem_arr[idim1] * nfem_arr[idim2];
+        idx = ibas1 + (ibas2 - 1) * nfem_arr[idim1];
 
         // Ensure fval has enough space
         if (idx >= fval.size()) {
           fval.resize(idx + 1, 0.0);
         }
 
-        // fval[idx] += fbas1 * fbas2 * fbas3 * fspl[idx];
         output_fval += fbas1 * fbas2 * fspl[idx];
       }
     }
@@ -1082,6 +1121,5 @@ private:
   double fbas_ed(double x) const;
   double fbas_ed_left(double x) const;
 };
-
 
 #endif // SPLINECUBICND_H

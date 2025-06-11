@@ -31,6 +31,7 @@ class FieldExtCls : public FieldCls {
     
         // Methods
         void init(const Equilibrium& equ, std::vector<ParticleSpecies>& pt);
+        void initializePerturbations();
         void finalize();
         void restart(int flag){};
         void test();
@@ -95,6 +96,20 @@ void FieldExtCls::init(const Equilibrium& equ, std::vector<ParticleSpecies>& pt)
         }
     }
 
+    // Initialize perturbation fields==0
+    for (int i = 0; i < this->ntotfem2d1f; ++i) {
+        this->denskMkj[i] = 0.0;
+        this->phik[i] = 0.0;
+        this->jparkMkj[i] = 0.0;
+        this->apark[i] = 0.0;
+        if (this->imixvar == 1) {
+            this->aparsk[i] = 0.0;
+            this->aparhk[i] = 0.0;
+        }
+    }
+    // Initialize Ana Gauss perturbation fields
+    initializePerturbations();
+
     // Initialize solvers
     if (rank == 0) {
         std::cout << "----init Poisson, Ampere, Ohm solver in FieldExtCls----" << std::endl;
@@ -137,5 +152,44 @@ void FieldExtCls::init(const Equilibrium& equ, std::vector<ParticleSpecies>& pt)
 
     //     this->svAmpere.assembly_general2d1f(this->spc, equ, 1, idiff2dL_amp, ieq1dL_amp, igij1dL_amp, this->bcrad, this->ntor1d, pt);
     // }
+}
+
+void FieldExtCls::initializePerturbations() {
+    double dtheta = 2 * M_PI / nthe;
+    double drad = (radmax - radmin) / nrad;
+
+     // 直接在函数中定义并初始化
+    std::vector<double> rc1_arr(this->lenntor, 0.5);
+    std::vector<double> amp_arr(this->lenntor, 0.1);
+    std::vector<double> rwidth_arr(this->lenntor, 0.1);
+    std::vector<int> mpoloidal_arr(this->lenntor);
+
+    for (int i = 0; i < this->lenntor; ++i) {
+        mpoloidal_arr[i] = 5 + i;  // 例如：每个 toroidal mode 不同的 poloidal 模数
+    }
+
+    for (int itor = 0; itor < this->lenntor; ++itor) {
+        double rc1 = rc1_arr[itor];
+        double amp = amp_arr[itor];
+        double rwidth = rwidth_arr[itor];
+        int mpoloidal = mpoloidal_arr[itor];
+
+        for (int i = 0; i < nradfem; ++i) {
+            for (int j = 0; j < nthefem; ++j) {
+                int idx = itor * nradfem * nthefem + i * nthefem + j;
+
+                double r = radmin + i * drad;
+                double theta = themin + j * dtheta;
+
+                // 高斯径向部分
+                double radial_part = amp * std::exp( - std::pow((r - rc1) / rwidth, 2) );
+
+                // 角向复数部分
+                std::complex<double> angular_part = std::exp(std::complex<double>(0, mpoloidal * theta));
+
+                this->phik[idx] = radial_part * angular_part;
+            }
+        }
+    }
 }
 #endif // FIELDEXTCLS_H

@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 data = np.loadtxt('data_fval.txt')
 nx=12
 ny=16
-#data = np.loadtxt('data_fval_intp_dense.txt')
-#nx=40
-#ny=41
+# # interpolated data to a finer grid
+# data = np.loadtxt('data_fval_intp_dense.txt')
+# nx=40
+# ny=41
 
 data = data.reshape(ny,nx)
 

@@ -228,21 +228,36 @@ public:
                          spc1d.getExt(0));
       for (int i = 0; i < nqx; i++)
         f_bsp.evaluate1d(xq1d[i], idiffx, fq1d[i]);
-    }else if (ndim==3)
-    {
+    } else if (ndim == 2) {
+      // !=========================3D interpolation=======================
+      if (rank == 0) {
+        std::cout
+            << "--------f_bsp 2d test starts: initialize, evaluate--------"
+            << std::endl;
+      }
+      f_bsp.initialize2d(spc1d.getZ1d(0), spc1d.getZ1d(1), spc1d.getFval(),
+                         spc1d.getBC(0), spc1d.getBC(1), spc1d.getExt(0),
+                         spc1d.getExt(1));
+      std::cout << "Finished initialize 2d" << std::endl;
+      for (int i = 0; i < nqx; i++)
+        for (int j = 0; j < nqy; j++)
+          f_bsp.evaluate2d(xq1d[i], yq1d[j], idiffx, idiffy, fq1d[i + j * nqx]);
+    } else if (ndim == 3) {
       // !=========================3D interpolation=======================
       if (rank == 0) {
         std::cout
             << "--------f_bsp 3d test starts: initialize, evaluate--------"
             << std::endl;
       }
-      f_bsp.initialize3d(spc1d.getZ1d(0), spc1d.getZ1d(1), spc1d.getZ1d(2), spc1d.getFval(), 
-                         spc1d.getBC(0), spc1d.getBC(1), spc1d.getBC(2), 
-                         spc1d.getExt(0), spc1d.getExt(1), spc1d.getExt(2));
+      f_bsp.initialize3d(spc1d.getZ1d(0), spc1d.getZ1d(1), spc1d.getZ1d(2),
+                         spc1d.getFval(), spc1d.getBC(0), spc1d.getBC(1),
+                         spc1d.getBC(2), spc1d.getExt(0), spc1d.getExt(1),
+                         spc1d.getExt(2));
       for (int i = 0; i < nqx; i++)
         for (int j = 0; j < nqy; j++)
           for (int k = 0; k < nqz; k++)
-            f_bsp.evaluate3d(xq1d[i], yq1d[j], zq1d[k], idiffx, idiffy, idiffz, fq1d[i + j * nqx + k * nqx * nqy]);
+            f_bsp.evaluate3d(xq1d[i], yq1d[j], zq1d[k], idiffx, idiffy, idiffz,
+                             fq1d[i + j * nqx + k * nqx * nqy]);
     }
     auto end = std::chrono::high_resolution_clock::now();
     t2 = MPI_Wtime();
@@ -266,34 +281,30 @@ public:
 
   int testField() {
     if (rank == 0) {
-        std::cout << "========== Test Field Starts ==========" << std::endl;
+      std::cout << "========== Test Field Starts ==========" << std::endl;
     }
 
-    
     Equilibrium equ;
     equ.readInput("input.ini");
     // FieldCls field;
     // field.field_cls_init(equ);
-    std::vector<ParticleSpecies> particleList; // Create the actual vector
-    std::vector<ParticleSpecies>& pt = particleList; // Reference to it
+    std::vector<ParticleSpecies> particleList;       // Create the actual vector
+    std::vector<ParticleSpecies> &pt = particleList; // Reference to it
 
     FieldExtCls fd;
-    std::cout << "========Init,Test FieldExt========"
-              << std::endl;
+    std::cout << "========Init,Test FieldExt========" << std::endl;
     // fd.field_cls_init(equ);
     fd.init(equ, pt);
 
-    
     // try {
     //     field.readInput("input.ini");
     // } catch (const std::exception &e) {
     //     std::cerr << e.what() << std::endl;
     //     return EXIT_FAILURE;  // Return failure status
     // }
-    
-    return EXIT_SUCCESS;  // Return success status
-}
 
+    return EXIT_SUCCESS; // Return success status
+  }
 
 private:
   MPIManager &mpiManager;
@@ -304,7 +315,7 @@ int main(int argc, char **argv) {
   Simulation sim(argc, argv);
   // sim.run();
   // sim.testParticle();
-  // sim.testSplineNd();
-  sim.testField();
+  sim.testSplineNd();
+  // sim.testField();
   return 0;
 }
