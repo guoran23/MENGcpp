@@ -289,12 +289,20 @@ public:
     // FieldCls field;
     // field.field_cls_init(equ);
     std::vector<ParticleSpecies> particleList;       // Create the actual vector
-    std::vector<ParticleSpecies> &pt = particleList; // Reference to it
+    //std::vector<ParticleSpecies> &pt = particleList; // Reference to it
+
+    // Create a particle species
+    int nptot_all = 10;
+    double mass = 1.0;
+    double zcharge = -1.0;
+    ParticleSpecies pt(nptot_all, mass, zcharge);
+    pt.setSpId(0);
 
     FieldExtCls fd;
     std::cout << "========Init,Test FieldExt========" << std::endl;
     // fd.field_cls_init(equ);
-    fd.init(equ, pt);
+    fd.init(equ, particleList);
+    fd.field_ext_cls_test(equ, pt);
 
     // try {
     //     field.readInput("input.ini");
@@ -315,7 +323,7 @@ int main(int argc, char **argv) {
   Simulation sim(argc, argv);
   // sim.run();
   // sim.testParticle();
-  sim.testSplineNd();
-  // sim.testField();
+  // sim.testSplineNd();
+  sim.testField();
   return 0;
 }

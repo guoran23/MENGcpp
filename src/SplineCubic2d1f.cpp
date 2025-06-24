@@ -90,8 +90,23 @@ SplineCubic2d1f::SplineCubic2d1f(int input_source, const int bc_arr[3],
   this->ntotbc = this->ntotfem - this->ntotdof;
   this->ntot12fem = this->nfem_arr[0] * this->nfem_arr[1];
   this->ntot12dof = this->ndof_arr[0] * this->ndof_arr[1];
-  std::cout << "bc_arr = " << this->bc_arr[0] << " " << this->bc_arr[1]
-            << " " << this->bc_arr[2] << std::endl;
+
+  z1d1.resize(nnode_arr[0]);
+  z1d2.resize(nnode_arr[1]);
+  z1d3.resize(nnode_arr[2]);
+
+  for (int i = 0; i < nnode_arr[0]; ++i) {
+    z1d1[i] = zmin_arr[0] + i * dz_arr[0];
+  }
+  for (int i = 0; i < nnode_arr[1]; ++i) {
+    z1d2[i] = zmin_arr[1] + i * dz_arr[1];
+  }
+  for (int i = 0; i < nnode_arr[2]; ++i) {
+    z1d3[i] = zmin_arr[2] + i * dz_arr[2];
+  }
+
+  std::cout << "bc_arr = " << this->bc_arr[0] << " " << this->bc_arr[1] << " "
+            << this->bc_arr[2] << std::endl;
   std::cout << "nnode_arr = " << this->nnode_arr[0] << " " << this->nnode_arr[1]
             << " " << this->nnode_arr[2] << std::endl;
   std::cout << "nfem_arr = " << this->nfem_arr[0] << " " << this->nfem_arr[1]

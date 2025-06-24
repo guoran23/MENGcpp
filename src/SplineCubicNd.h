@@ -88,6 +88,7 @@ public:
 
   // getter
   int getDimension() const { return ndim; }
+  const std::vector<int>& getNnodeArr() const { return nnode_arr; }
   double getZMin(int idim) const { return zmin_arr[idim]; }
   double getDz(int idim) const { return dz_arr[idim]; }
   double getZWidth(int idim) const { return zwid_arr[idim]; }
@@ -95,6 +96,7 @@ public:
   int getBC(int idim) const { return bc_arr[idim]; }
   int getExt(int idim) const { return ext_arr[idim]; }
   std::vector<double> getFval() const { return fval; }
+
 
   // Initialization methods
   void spc_cls_init_bc();
@@ -1002,7 +1004,7 @@ public:
   // some basic functions
   double spc_cls_get_fbas_ix(int ibas, double x, int idiff, int idirec) const {
     if (idirec >= 3 || idirec < 0) {
-      std::cerr << "====Error: wrong idirec in Spc_Cls_Get_Fbas_ix===="
+      std::cerr << "====Error: SplineCubicNd: wrong idirec in Spc_Cls_Get_Fbas_ix===="
                 << std::endl;
       return 0.0;
     }

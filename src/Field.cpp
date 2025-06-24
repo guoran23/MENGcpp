@@ -257,7 +257,7 @@ void FieldCls::field_cls_g2p2d1f_general(
     const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
     const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
     const std::vector<double> &ptthe1d, const std::vector<double> &ptphi1d,
-    std::vector<double> &ptf1d, const std::vector<int> &idiff, int ngyro,
+    std::vector<double> &ptf1d, const std::array<int, 3> &idiff, int ngyro,
     const std::vector<double> &rho1) {
   // timer.tic(3);
 

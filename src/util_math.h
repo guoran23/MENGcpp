@@ -20,6 +20,7 @@
 
 namespace UtilMath {
     int modulo(int a, int p);
+    double modulo(double a, double p);
     void lgwt(int n, double a, double b, std::vector<double> &x1d, std::vector<double> &w1d);
 }
 

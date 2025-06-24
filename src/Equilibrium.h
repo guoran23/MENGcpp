@@ -87,6 +87,7 @@ public:
     nref = reader.GetReal("Equilibrium", "nref", 1e19);
     Tref = reader.GetReal("Equilibrium", "Tref", 1000.0);
     Bref = reader.GetReal("Equilibrium", "Bref", 1.0);
+    zmaxis = reader.GetReal("Equilibrium", "zmaxis", 0.0);
 
     rmaxis = rmaxis_adhoc;
     Bmaxis = Bmaxis_adhoc;

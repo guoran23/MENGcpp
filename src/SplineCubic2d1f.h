@@ -20,7 +20,7 @@ private:
   SplineCubicNdCls spline2d; // 组合一个 Nd 版本的样条类
   std::vector<int> ntor1d;   // toroidal modes
   int ndim = 3;              // Number of dimensions
-  int norder = 4;                // Spline order (e.g., 4 for cubic)
+  int norder = 4;            // Spline order (e.g., 4 for cubic)
   int nintg;                 // Integration points
   int nintg_tot;             // Total integration points
   double xshift;             // Coordinate shift
@@ -43,6 +43,7 @@ private:
   std::vector<double> dz_arr;   // Grid spacing
 
   std::vector<std::vector<double>> z1d_arr; // Ragged array of 1D coordinates
+  std::vector<double> z1d1, z1d2, z1d3;
 
   // Boundary and DOF indices
   int ntotbc;              // Total boundary nodes
@@ -76,24 +77,33 @@ private:
 public:
   // geters
   const std::vector<int> &getNtor1d() const { return ntor1d; }
+  const std::vector<int> &getNnodeArr() const { return nnode_arr; }
+  const std::vector<double> &get_z1d1() const { return z1d1; }
+  const std::vector<double> &get_z1d2() const { return z1d2; }
+  const std::vector<double> &get_z1d3() const { return z1d3; }
   const int get_ntot12fem() const { return ntot12fem; }
   const int get_ntot12dof() const { return ntot12dof; }
   const int get_ntotdof() const { return ntotdof; }
   const int get_ntotfem() const { return ntotfem; }
   // Constructor, initializing the spline2d object
-  SplineCubic2d1f();  // Declaration of the default constructor
+  SplineCubic2d1f(); // Declaration of the default constructor
   SplineCubic2d1f(int input_source, const int bc_arr[3], const int nnode_arr[3],
-                     const double zmin_arr[3], const double zmax_arr[3], bool nl_debug);
+                  const double zmin_arr[3], const double zmax_arr[3],
+                  bool nl_debug);
 
-  void spc_cls_calc_idxdof2d1f(int lenntor, std::vector<int>& idxdof2d1f);
+  void spc_cls_calc_idxdof2d1f(int lenntor, std::vector<int> &idxdof2d1f);
 
+  // SHM: f1d(1:ntotfem); assume: 1--rad, 2--the, 3--phi
+  // prad1d,pthe1d,pphi1d, 1d array; idiff:
+  // (d^i1/drad^i1,d^i2/dthe^i2,d^i3/dphi^i3) note output pf1d is real*8,
+  // pf=2*real(f_{k/ne0}*exp{inphi})+real(f_{k=0})
   void spc_cls_sp2p2d1f(const std::vector<std::complex<double>> &f1d,
                         const std::vector<int> &ntor1d,
                         const std::vector<double> &prad1d,
                         const std::vector<double> &pthe1d,
                         const std::vector<double> &pphi1d,
                         std::vector<double> &pf1d,
-                        const std::vector<int> &idiff) {
+                        const std::array<int, 3> &idiff) {
 
     int dimrad{0}, dimthe{1};
     pf1d.assign(pf1d.size(), 0.0);
@@ -105,44 +115,47 @@ public:
       if (rad1 > zmax_arr[0] || rad1 < zmin_arr[0])
         continue;
 
-      double the1 =
-          std::fmod(pthe1d[fpc] - zmin_arr[1], zwid_arr[1]) + zmin_arr[1];
-      double phi1 =
-          std::fmod(pphi1d[fpc] - zmin_arr[2], zwid_arr[2]) + zmin_arr[2];
+      double the1 = UtilMath::modulo(pthe1d[fpc] - zmin_arr[1], zwid_arr[1]) +
+                    zmin_arr[1];
+      double phi1 = UtilMath::modulo(pphi1d[fpc] - zmin_arr[2], zwid_arr[2]) +
+                    zmin_arr[2];
 
-      int ithefloorhere;
+      int ithefloorhere, iradfloorhere; // from 1 to ngrids
       double xthe;
       std::complex<double> pfradthe_c16 = 0.0;
       std::complex<double> pfrad_c16 = 0.0;
-      int iradfloorhere;
       double xrad;
       for (int itor = 0; itor < lenntor; ++itor) {
         pfradthe_c16 = 0.0;
         for (int itheshift = 0; itheshift <= 3; ++itheshift) {
           spc_cls_glb2loc(the1, dimthe, itheshift, ithefloorhere, xthe);
+          // std::cout << "ithefloorhere=" << ithefloorhere << std::endl;
           pfrad_c16 = 0.0;
           if (ithefloorhere >= 1) {
             for (int iradshift = 0; iradshift <= 3; ++iradshift) {
               spc_cls_glb2loc(rad1, dimrad, iradshift, iradfloorhere, xrad);
 
+              // std::cout << "iradfloorhere=" << iradfloorhere << std::endl;
               if (iradfloorhere >= 1) {
                 int idx123 = iradfloorhere + nfem_arr[0] * (ithefloorhere - 1) +
-                             ntot12fem * (itor - 1);
+                             ntot12fem * (itor);
+
                 pfrad_c16 +=
                     spc_cls_get_fbas_ix(iradfloorhere, xrad, idiff[0], dimrad) *
-                    f1d[idx123];
+                    f1d[idx123 - 1];
               } // inside rad
-            }  // iradshift
+            }   // iradshift
             pfradthe_c16 += pfrad_c16 * spc_cls_get_fbas_ix(ithefloorhere, xthe,
                                                             idiff[1], dimthe);
           } // inside the
         }   // itheshift
 
         double f1or2 = (ntor1d[itor] != 0) ? 2.0 : 1.0;
-        std::complex comp = std::pow(std::complex<double>(0.0, ntor1d[itor]), idiff[2]);
-        pf1d[fpc] +=
-            f1or2 *
-            std::real(pfradthe_c16 * comp *std::exp(std::complex<double>(0.0, 1.0 * ntor1d[itor] * phi1)));
+        std::complex comp =
+            std::pow(std::complex<double>(0.0, ntor1d[itor]), idiff[2]);
+        pf1d[fpc] += f1or2 * std::real(pfradthe_c16 * comp *
+                                       std::exp(std::complex<double>(
+                                           0.0, 1.0 * ntor1d[itor] * phi1)));
       } // itor
     }   // fpc
 
@@ -177,10 +190,10 @@ public:
       if (rad1 < zmin_arr[0] || rad1 > zmax_arr[0])
         continue;
 
-      double the1 =
-          std::fmod(pthe1d[fpc] - zmin_arr[1], zwid_arr[1]) + zmin_arr[1];
-      double phi1 =
-          std::fmod(pphi1d[fpc] - zmin_arr[2], zwid_arr[2]) + zmin_arr[2];
+      double the1 = UtilMath::modulo(pthe1d[fpc] - zmin_arr[1], zwid_arr[1]) +
+                    zmin_arr[1];
+      double phi1 = UtilMath::modulo(pphi1d[fpc] - zmin_arr[2], zwid_arr[2]) +
+                    zmin_arr[2];
 
       for (int itor = 0; itor < lenntor; ++itor) {
         std::complex<double> pfradthe_c16[3] = {0.0, 0.0, 0.0};
@@ -197,7 +210,7 @@ public:
 
               if (iradfloorhere >= 1) {
                 int idx123 = iradfloorhere + nfem_arr[0] * (ithefloorhere - 1) +
-                             ntot12fem * (itor - 1);
+                             ntot12fem * (itor);
                 //  --sp2p versus p2sp: need switch pf1d & f1d
                 if (itheshift == 0) {
                   fNrad0_arr[iradshift] =
@@ -205,18 +218,18 @@ public:
                   fNrad1_arr[iradshift] =
                       spc_cls_get_fbas_ix(iradfloorhere, xrad, 1, dimrad);
                 }
-                pfrad_c16[0] += fNrad1_arr[iradshift] * f1d[idx123];
-                pfrad_c16[1] += fNrad0_arr[iradshift] * f1d[idx123];
-                // pfrad_c16(3) is same as pfrad_c16(2)
-              } // inside rad
-            } // iradshift
+                pfrad_c16[0] += fNrad1_arr[iradshift] * f1d[idx123 - 1];
+                pfrad_c16[1] += fNrad0_arr[iradshift] * f1d[idx123 - 1];
+                // pfrad_c16(2) is same as pfrad_c16(1)
+              } // inside iradfloorhere >= 1
+            }   // iradshift
             pfrad_c16[2] = pfrad_c16[1];
             fNthe0 = spc_cls_get_fbas_ix(ithefloorhere, xthe, 0, dimthe);
             fNthe1 = spc_cls_get_fbas_ix(ithefloorhere, xthe, 1, dimthe);
             pfradthe_c16[0] += pfrad_c16[0] * fNthe0;
             pfradthe_c16[1] += pfrad_c16[1] * fNthe1;
             pfradthe_c16[2] += pfrad_c16[2] * fNthe0;
-          } // inside the
+          } // inside ithefloorhere >= 1
         }   // itheshift
 
         double f1or2 = (ntor1d[itor] != 0) ? 2.0 : 1.0;
@@ -232,10 +245,10 @@ public:
     }   // fpc
 
     // Convert division to multiplication by the reciprocal
-    double reciprocal = 1.0 / dz_arr[0];  
+    double reciprocal = 1.0 / dz_arr[0];
     std::transform(pdfdrad1d.begin(), pdfdrad1d.end(), pdfdrad1d.begin(),
-                       [reciprocal](double val) { return val * reciprocal; });
-    reciprocal = 1.0 / dz_arr[1];  
+                   [reciprocal](double val) { return val * reciprocal; });
+    reciprocal = 1.0 / dz_arr[1];
     // Use std::transform to multiply each element by reciprocal
     std::transform(pdfdthe1d.begin(), pdfdthe1d.end(), pdfdthe1d.begin(),
                    [reciprocal](double val) { return val * reciprocal; });
@@ -245,15 +258,16 @@ public:
   void spc_cls_glb2loc(double XX0, int idirect, int ishift, int &ibas,
                        double &xloc) const {
     // Reset XX to [0, zmax)
+    // ibas from 1 to nfem_arr[idirect]
     double XX = XX0 - zmin_arr[idirect];
 
     if (bc_arr[idirect] == 0) {
-      XX = std::fmod(XX, zwid_arr[idirect]); // Equivalent to Fortran's modulo()
+      XX = UtilMath::modulo(
+          XX, zwid_arr[idirect]); // Equivalent to Fortran's modulo()
 
       ibas = static_cast<int>(std::floor(XX / dz_arr[idirect])) + ishift;
       xloc = XX / dz_arr[idirect] - (ibas - 1);
-      ibas = (ibas - 1) % nfem_arr[idirect] +
-             1; // Equivalent to modulo operation in Fortran
+      ibas = UtilMath::modulo((ibas - 1), nfem_arr[idirect]) + 1;
 
     } else if (bc_arr[idirect] == 1) {
       if (XX >= 0 && XX < zwid_arr[idirect]) {
@@ -271,16 +285,20 @@ public:
     }
   }
   double spc_cls_get_fbas_ix(int ibas, double x, int idiff, int idirec) {
-    if (idirec >= 4 || idirec <= 0) {
-      std::cerr << "====Error: wrong idirec in Spc_Cls_Get_Fbas_ix===="
+    // idirec: 0--rad, 1--the
+    // ibas: 1,2,3,...,nfem_arr[idirec]
+    // idiff: 0--fbas, 1--dfbas/d coord
+    if (idirec >= 3 || idirec < 0) {
+      std::cerr << "====Error: SplineCubic2d1f: wrong idirec in "
+                   "Spc_Cls_Get_Fbas_ix===="
                 << std::endl;
       return 0.0;
     }
 
-    int nfem = nfem_arr[idirec - 1];
-    if (bc_arr[idirec - 1] == 0) {
+    int nfem = nfem_arr[idirec];
+    if (bc_arr[idirec] == 0) {
       return spc_cls_fbas_in(x, idiff);
-    } else if (bc_arr[idirec - 1] == 1) {
+    } else if (bc_arr[idirec] >= 1) {
       if (ibas >= 4 && ibas <= nfem - 3) {
         return spc_cls_fbas_in(x, idiff);
       } else if (ibas == 1) {
