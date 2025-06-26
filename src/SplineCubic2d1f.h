@@ -210,17 +210,17 @@ public:
 
               if (iradfloorhere >= 1) {
                 int idx123 = iradfloorhere + nfem_arr[0] * (ithefloorhere - 1) +
-                             ntot12fem * (itor);
+                             ntot12fem * itor;
                 //  --sp2p versus p2sp: need switch pf1d & f1d
                 if (itheshift == 0) {
-                  fNrad0_arr[iradshift] =
-                      spc_cls_get_fbas_ix(iradfloorhere, xrad, 0, dimrad);
-                  fNrad1_arr[iradshift] =
-                      spc_cls_get_fbas_ix(iradfloorhere, xrad, 1, dimrad);
+                  fNrad0_arr[iradshift] = spc_cls_get_fbas_ix(
+                      iradfloorhere, xrad, /*idiff=*/0, dimrad);
+                  fNrad1_arr[iradshift] = spc_cls_get_fbas_ix(
+                      iradfloorhere, xrad, /*idiff=*/1, dimrad);
                 }
                 pfrad_c16[0] += fNrad1_arr[iradshift] * f1d[idx123 - 1];
                 pfrad_c16[1] += fNrad0_arr[iradshift] * f1d[idx123 - 1];
-                // pfrad_c16(2) is same as pfrad_c16(1)
+                // pfrad_c16(2) is same as pfrad_c16(1), fNrad0
               } // inside iradfloorhere >= 1
             }   // iradshift
             pfrad_c16[2] = pfrad_c16[1];
@@ -258,26 +258,44 @@ public:
   void spc_cls_glb2loc(double XX0, int idirect, int ishift, int &ibas,
                        double &xloc) const {
     // Reset XX to [0, zmax)
+    // ishift: 0--1st, 1--2nd, 2--3rd, 3--4th
     // ibas from 1 to nfem_arr[idirect]
+    const double dz = dz_arr[idirect];
+    const double zwid = zwid_arr[idirect];
+    const int nfem = nfem_arr[idirect];
+    const int bc = bc_arr[idirect];
+
     double XX = XX0 - zmin_arr[idirect];
 
-    if (bc_arr[idirect] == 0) {
-      XX = UtilMath::modulo(
-          XX, zwid_arr[idirect]); // Equivalent to Fortran's modulo()
+    if (bc == 0) {
+      // Periodic boundary condition
+      XX = UtilMath::modulo(XX, zwid);
+      // ibas = static_cast<int>(std::floor(XX / dz)) + ishift;
+      // xloc = XX / dz - (ibas - 1);
+      // ibas = UtilMath::modulo((ibas - 1), nfem) + 1;
 
-      ibas = static_cast<int>(std::floor(XX / dz_arr[idirect])) + ishift;
-      xloc = XX / dz_arr[idirect] - (ibas - 1);
-      ibas = UtilMath::modulo((ibas - 1), nfem_arr[idirect]) + 1;
+      double frac = XX / dz;
+      ibas = static_cast<int>(std::floor(frac)) + ishift - 1;
+      xloc = frac - ibas;
+      ibas = UtilMath::modulo(ibas, nfem) + 1;
 
-    } else if (bc_arr[idirect] == 1) {
-      if (XX >= 0 && XX < zwid_arr[idirect]) {
-        ibas = static_cast<int>(std::floor(XX / dz_arr[idirect])) + ishift + 1;
-        xloc = XX / dz_arr[idirect] - (ibas - 1) + 1;
+    } else if (bc >= 1) {
+      if (XX >= 0 && XX < zwid) {
+        // ibas = static_cast<int>(std::floor(XX / dz)) + ishift + 1;
+        // xloc = XX / dz - (ibas - 1) + 1;
 
-        if (ibas > nfem_arr[idirect]) {
-          ibas = nfem_arr[idirect];
+        double frac = XX / dz;
+
+        ibas = static_cast<int>(std::floor(frac)) + ishift + 1;
+        xloc = frac - ibas + 2;
+
+        if (ibas > nfem) {
+          ibas = nfem;
           xloc = 100;
         }
+      } else if (XX == zwid) {
+        ibas = nfem - ishift;
+        xloc = -1.0 + ishift;
       } else { // Make N to be 0
         ibas = 1;
         xloc = -100;
@@ -336,9 +354,9 @@ public:
   }
 
   double spc_cls_fbas_ed(double x, int idiff, int iedge, bool nl_left) {
-    double var = nl_left
-                     ? spc_cls_fbas_ed_left(x, idiff, iedge)
-                     : spc_cls_fbas_ed_left(-x, idiff, iedge) * pow(-1, idiff);
+    double var = nl_left ? spc_cls_fbas_ed_left(x, idiff, iedge)
+                         : spc_cls_fbas_ed_left(-x, idiff, iedge) *
+                               ((idiff == 0) ? 1.0 : -1.0);
     return var;
   }
 

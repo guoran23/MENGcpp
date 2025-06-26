@@ -88,7 +88,7 @@ public:
 
   // getter
   int getDimension() const { return ndim; }
-  const std::vector<int>& getNnodeArr() const { return nnode_arr; }
+  const std::vector<int> &getNnodeArr() const { return nnode_arr; }
   double getZMin(int idim) const { return zmin_arr[idim]; }
   double getDz(int idim) const { return dz_arr[idim]; }
   double getZWidth(int idim) const { return zwid_arr[idim]; }
@@ -96,7 +96,6 @@ public:
   int getBC(int idim) const { return bc_arr[idim]; }
   int getExt(int idim) const { return ext_arr[idim]; }
   std::vector<double> getFval() const { return fval; }
-
 
   // Initialization methods
   void spc_cls_init_bc();
@@ -828,20 +827,24 @@ public:
 
   void spc_cls_glb2loc(double XX0, int idirect, int ishift, int &ibas,
                        double &xloc) const {
+
+    const double dz = dz_arr[idirect];
+    const double zwid = zwid_arr[idirect];
+    const int nfem = nfem_arr[idirect];
+    const int bc = bc_arr[idirect];
+
     double XX = XX0 - zmin_arr[idirect]; // Adjust XX to start from 0
 
-    if (bc_arr[idirect] == 0) {
+    if (bc == 0) {
       // Periodic boundary condition
-      XX = std::fmod(XX, zwid_arr[idirect]);
-      if (XX < 0)
-        XX += zwid_arr[idirect]; // Ensure positive modulus
+      XX = UtilMath::modulo(XX, zwid);
 
-      ibas = static_cast<int>(std::floor(XX / dz_arr[idirect])) + ishift;
-      xloc = XX / dz_arr[idirect] - (ibas - 1);
-      // ibas = (ibas - 1) % nfem_arr[idirect] + 1;
-      ibas = UtilMath::modulo(ibas - 1, nfem_arr[idirect]) + 1;
+      double frac = XX / dz;
+      ibas = static_cast<int>(std::floor(frac)) + ishift - 1;
+      xloc = frac - ibas;
+      ibas = UtilMath::modulo(ibas, nfem) + 1;
 
-    } else if (bc_arr[idirect] >= 1) {
+    } else if (bc >= 1) {
       // Handle special case at zmax
       if (XX0 == zmax_arr[idirect]) {
         ibas = nnode_arr[idirect];
@@ -849,7 +852,7 @@ public:
         return;
       }
 
-      ibas = static_cast<int>(std::floor(XX / dz_arr[idirect])) + ishift + 1;
+      ibas = static_cast<int>(std::floor(XX / dz)) + ishift + 1;
 
       if (ibas <= 0) {
         ibas = 1;
@@ -860,7 +863,7 @@ public:
         xloc = (ext_arr[idirect] == 1) ? 2.0 : 1.0; // Out-of-bounds behavior
 
       } else {
-        xloc = XX / dz_arr[idirect] - (ibas - 1) + 1;
+        xloc = XX / dz - ibas + 2;
       }
     }
   }
@@ -1004,8 +1007,9 @@ public:
   // some basic functions
   double spc_cls_get_fbas_ix(int ibas, double x, int idiff, int idirec) const {
     if (idirec >= 3 || idirec < 0) {
-      std::cerr << "====Error: SplineCubicNd: wrong idirec in Spc_Cls_Get_Fbas_ix===="
-                << std::endl;
+      std::cerr
+          << "====Error: SplineCubicNd: wrong idirec in Spc_Cls_Get_Fbas_ix===="
+          << std::endl;
       return 0.0;
     }
 
