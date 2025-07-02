@@ -14,6 +14,7 @@
 #include "FieldExt.h"
 #include "MPIManager.h"
 #include "Particle.h"
+#include "ParticleExtCls.h"
 #include "SplineCubicNd.h"
 #include "util_io.h"
 
@@ -131,16 +132,17 @@ public:
     equ.writeWallRZ();
 
     // Field part (commented out)
-    // if (rank == 0)
-    //   std::cout << "========Init,Test Field in Testparticle========"
-    //             << std::endl;
-    // fd.field_cls_init(equ);
+    if (rank == 0)
+      std::cout << "========Init,Test Field in Testparticle========"
+                << std::endl;
+    FieldCls fd;
+    fd.field_cls_init(equ);
 
     // Particle part
     if (rank == 0)
       std::cout << "========Init,Test Particle in Testparticle========"
                 << std::endl;
-    // pt.particle_ext_cls_init(equ);
+    ParticleExtCls pt_ext(equ, pt, rank, size);
 
     if (icase == 0) {
       // Test Particle Check
@@ -151,10 +153,11 @@ public:
       pt.particle_cls_test(equ, irk, nrun, dt_o_Ttr, iset_track);
     } else if (icase == 1) {
       // Particle Test with Field (commented out)
-      // if (rank == 0)
-      //     std::cout << "========TEST Particle Class with field========"
-      //               << std::endl;
-      // pt.particle_ext_cls_test(equ, fd, irk, nrun, dt_o_Ttr, iset_track);
+      if (rank == 0)
+        std::cout << "========TEST Particle Class with field========"
+                  << std::endl;
+      std::cout << "========Init,Test FieldExt========" << std::endl;
+      pt_ext.particle_ext_cls_test(equ, fd, irk, nrun, dt_o_Ttr, iset_track);
     }
 
     t2 = MPI_Wtime();
@@ -162,8 +165,9 @@ public:
       std::cout << "---- cputime: " << t2 - t1 << " ----" << std::endl;
     }
 
-    if (rank == 0)
+    if (rank == 0) {
       std::cout << "====Test Particle Ends====" << std::endl;
+    }
   }
 
   void testSplineNd() {
@@ -288,8 +292,8 @@ public:
     equ.readInput("input.ini");
     // FieldCls field;
     // field.field_cls_init(equ);
-    std::vector<ParticleSpecies> particleList;       // Create the actual vector
-    //std::vector<ParticleSpecies> &pt = particleList; // Reference to it
+    std::vector<ParticleSpecies> particleList; // Create the actual vector
+    // std::vector<ParticleSpecies> &pt = particleList; // Reference to it
 
     // Create a particle species
     int nptot_all = 10;
@@ -322,8 +326,8 @@ private:
 int main(int argc, char **argv) {
   Simulation sim(argc, argv);
   // sim.run();
-  // sim.testParticle();
-  // sim.testSplineNd();
+  sim.testParticle();
+  sim.testSplineNd();
   sim.testField();
   return 0;
 }

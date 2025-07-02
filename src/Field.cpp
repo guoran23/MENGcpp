@@ -157,6 +157,8 @@ void FieldCls::field_cls_set_parms() {
     this->ntor1d[i] = this->ntor_min + i * this->ntor_stride;
   }
 
+  this->ntotfem2d1f = this->nradfem * this->nthefem * this->lenntor;
+
   // Print field information
   if (rank == 0) {
     std::cout << "================ Field Info ================" << std::endl;
@@ -253,6 +255,22 @@ double FieldCls::field_cls_get_fbuff(double rad,
   return var;
 }
 
+// 针对double的重载
+void FieldCls::field_cls_g2p2d1f_general(
+    const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
+    const std::vector<int> &ntor1d, const double ptrad1d, const double ptthe1d,
+    const double ptphi1d, double &ptf1d, const std::array<int, 3> &idiff,
+    int ngyro, double rho1) {
+  std::vector<double> ptf1d_vec;
+
+  field_cls_g2p2d1f_general(
+      equ, f1d, ntor1d, std::vector<double>{ptrad1d},
+      std::vector<double>{ptthe1d}, std::vector<double>{ptphi1d}, ptf1d_vec,
+      idiff, ngyro, std::vector<double>{rho1});
+
+  ptf1d = ptf1d_vec[0];
+}
+
 void FieldCls::field_cls_g2p2d1f_general(
     const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
     const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
@@ -322,6 +340,24 @@ void FieldCls::field_cls_g2p2d1f_general(
 
   // timer.toc(3);
 }
+// 针对double的重载
+void FieldCls::field_cls_g2p2d1f_grad(
+    const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
+    const std::vector<int> &ntor1d, const double ptrad1d, const double ptthe1d,
+    const double ptphi1d, double &ptf1d100, double &ptf1d010, double &ptf1d001,
+    int ngyro, double rho1) {
+  std::vector<double> ptf1d100_vec, ptf1d010_vec, ptf1d001_vec;
+
+  field_cls_g2p2d1f_grad(
+      equ, f1d, ntor1d, std::vector<double>{ptrad1d},
+      std::vector<double>{ptthe1d}, std::vector<double>{ptphi1d}, ptf1d100_vec,
+      ptf1d010_vec, ptf1d001_vec, ngyro, std::vector<double>{rho1});
+
+  ptf1d100 = ptf1d100_vec[0];
+  ptf1d010 = ptf1d010_vec[0];
+  ptf1d001 = ptf1d001_vec[0];
+}
+
 void FieldCls::field_cls_g2p2d1f_grad(
     const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
     const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,

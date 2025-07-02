@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <iostream>
 #include <mpi.h>
+#include <optional>
 #include <random>
 #include <string>
 #include <vector>
@@ -130,6 +131,12 @@ private:
   double Cp2g2d1f;
   double Cp2g1d;
   int ideltaf = 1; // 0123
+
+  int ngyro = 1; // number of gyros per particle, default is 1
+  int ischeme_motion;
+  int v_par0 = 1, v_d = 0, v_mirror = 0, v_ExB = 0, v_Epar = 1, idwdt = 1;
+
+protected:
   int rank = 0;
   int size = 0;
 
@@ -165,7 +172,9 @@ public:
   }
 
   // Accessors
+  int getRank() const { return rank; }
   int getNptot() const { return nptot; }
+  int getNgyro() const { return ngyro; }
   long long getNptotAll() const { return nptot_all; }
   double getMass() const { return mass; }
   double getCharge() const { return zcharge; }
@@ -185,7 +194,134 @@ public:
   void setCp2g1d(double cp2g1d) { Cp2g1d = cp2g1d; }
   double getideltaf() const { return ideltaf; }
   void setideltaf(int id) { ideltaf = id; }
+  int getIschemeMotion() const { return ischeme_motion; }
+  void setIschemeMotion(int scheme) {
+    if (scheme >= 1 && scheme <= 2) {
+      ischeme_motion = scheme;
+    } else {
+      std::cerr << "Error: ischeme_motion must be between 0 and 3."
+                << std::endl;
+      std::abort();
+    }
+  }
+  void setNgyro(int n) {
+    if (n > 0) {
+      ngyro = n;
+    } else {
+      std::cerr << "Error: ngyro must be positive." << std::endl;
+      std::abort();
+    }
+  }
+  int getvPar0() const { return v_par0; }
+  void setvPar0(int v) {
+    if (v == 0 || v == 1) {
+      v_par0 = v;
+    } else {
+      std::cerr << "Error: v_par0 must be 0 or 1." << std::endl;
+      std::abort();
+    }
+  }
+  int getvD() const { return v_d; }
+  void setvD(int v) {
+    if (v == 0 || v == 1) {
+      v_d = v;
+    } else {
+      std::cerr << "Error: v_d must be 0 or 1." << std::endl;
+      std::abort();
+    }
+  }
+  int getvMirror() const { return v_mirror; } // Mirror force
+  void setvMirror(int v) {
+    if (v == 0 || v == 1) {
+      v_mirror = v; // 0: no mirror, 1: mirror force
+    } else {
+      std::cerr << "Error: v_mirror must be 0 or 1." << std::endl;
+      std::abort();
+    }
+  }
+  int getvExB() const { return v_ExB; } // ExB drift
+  void setvExB(int v) {
+    if (v == 0 || v == 1) {
+      v_ExB = v; // 0: no ExB, 1: ExB drift
+    } else {
+      std::cerr << "Error: v_ExB must be 0 or 1." << std::endl;
+      std::abort();
+    }
+  }
+  int getvEpar() const { return v_Epar; } // Epar
+  void setvEpar(int v) {
+    if (v == 0 || v == 1) {
+      v_Epar = v; // 0: no Epar, 1: Epar drift
+    } else {
+      std::cerr << "Error: v_Epar must be 0 or 1." << std::endl;
+      std::abort();
+    }
+  }
+  int getIdwdt() const { return idwdt; } // 0: no dwdt, 1: dwdt
+  void setIdwdt(int v) {
+    if (v == 0 || v == 1) {
+      idwdt = v; // 0: no dwdt, 1: dwdt
+    } else {
+      std::cerr << "Error: idwdt must be 0 or 1." << std::endl;
+      std::abort();
+    }
+  }
   //
+  double getTem1d(double radius) const {
+    // Implement function to get temperature based on radius
+    return 1.0; // Placeholder
+  }
+  double getdlnTemdr1d(double radius) const {
+    // Implement function to get the derivative of log temperature with respect to radius
+    return 0.0; // Placeholder
+  }
+
+   double getdens1d(double radius) const {
+    // Implement function to get density
+    return 1.0; // Placeholder
+  }
+  double getdlndensdr1d(double radius) const {
+    // Implement function to get the derivative of log density with respect to radius
+    return 0.0; // Placeholder
+  }
+
+  double getdens1d_can(Equilibrium &equ, double radius, double theta,
+                       double vpar, double mu) {
+    // Implement function to get canonical density
+    return 1.0; // Placeholder
+  }
+  double get_fsrcsnk(double radius) const {
+    // Implement function to get source/sink term
+    return 0.0; // Placeholder
+  }
+
+  // void particle_cls_init(Equilibrium &equ_in,
+  //                        std::optional<int> sp_id_in = std::nullopt) {
+  //   // 1. 处理sp_id
+  //   if (sp_id_in.has_value()) {
+  //     this->sp_id = sp_id_in.value();
+  //   } else {
+  //     this->sp_id = 0;
+  //   }
+
+  //   // 2. species_name 根据sp_id赋值
+  //   this->species_name = std::to_string(this->sp_id);
+
+  //   if (rank == 0) {
+  //     std::cout << "----initializing " << species_name << std::endl;
+  //   }
+
+  //   // 3.
+  //   this->particle_cls_link2eq(equ_in);
+  //   this->particle_cls_set_parms(equ_in, species, rank);
+  //   std::cout << "Finish particle_cls_set_parms...\n";
+  //   //========== Load Markers==================
+  //   this->particle_cls_loadmarker(equ_in, species);
+
+  //   std::cout << "Finish particle_cls_loadmarker...\n";
+  //   double Bax = abs(equ_in.Bmaxis);
+  //   this->particle_cls_track_init(0, Bax);
+  // }
 
   void particle_onestep_euler_0(Equilibrium &equ, ParticleCoords &dxvdt,
                                 double dt) {
@@ -525,11 +661,13 @@ public:
 class Particle {
 private:
   int nsp;
-  ParticleGroup group;
   Equilibrium equ;
 
 public:
-  int ischeme_motion, ngyro, irandom_gy;
+  ParticleGroup group;
+
+  int ischeme_motion, irandom_gy;
+  int v_par0 = 1, v_d = 0, v_mirror = 0, v_ExB = 0, v_Epar = 1, idwdt = 1;
   int imixvar = 1;
   int ibc_particle = 0, iset_zerosumw;
   bool irestart = false;
@@ -579,7 +717,6 @@ public:
   // !--collision--
   int icol = 0;
   double nu_colN = 0.0;
-  int v_par0 = 1, v_d = 0, v_mirror = 0, v_ExB = 0, v_Epar = 1, idwdt = 1;
   int pullbackN;
 
   int irec_track = 1, irec_Eparticle = 1;
@@ -592,6 +729,8 @@ public:
   //
   // timer_cls timer;
 public:
+  // getters
+  int getNsp() const { return nsp; }
   void readInput(const std::string &filepath, int mpisize) {
     INIReader reader(filepath);
     std::cout << "Reading input file: " << filepath << std::endl;
@@ -600,6 +739,7 @@ public:
       std::cerr << "Error: Unable to load INI file: " << filepath << std::endl;
     }
     nsp = reader.GetInteger("MENG", "nsp", 0);
+    int ischeme_motion = reader.GetInteger("MENG", "ischeme_motion", 2);
     // Iterate over predefined sections
     for (int i = 1; i <= nsp; ++i) {
       std::string section = "Particle_" + std::to_string(i);
@@ -614,6 +754,7 @@ public:
       double Tem = reader.GetReal(section, "Tem", 1.0);
       double nsonN = reader.GetReal(section, "nsonN", 1.0);
       int ideltaf = reader.GetInteger(section, "ideltaf", 1);
+      int ngyro = reader.GetInteger(section, "ngyro", 1);
 
       if (nptot_all > 0) {
         int nptot = nptot_all / mpisize; // calculate particles per process
@@ -627,6 +768,8 @@ public:
         species->setNsonN(nsonN);
         species->setSpId(i - 1);
         species->setideltaf(ideltaf);
+        species->setNgyro(ngyro);
+        species->setIschemeMotion(ischeme_motion);
         std::cout << "  Species '" << species_name << "' added successfully.\n";
         // Log the parsed values
         std::cout << "  nptot: " << nptot << ", mass: " << mass
@@ -646,6 +789,8 @@ public:
 
   void print() const { group.print(); }
 
+  // Constructor
+  Particle() {}
   Particle(Equilibrium &equ_in, int rank, int mpisize_in) : equ(equ_in) {
 
     std::cout << "Instance Particle @process " << rank << " of " << mpisize_in
@@ -655,6 +800,33 @@ public:
     if (rank == 0) {
       std::cout << "Finish particle readInput...\n"
                 << "nsp =" << nsp << std::endl;
+    }
+    // 2. Summay of particles
+    std::cout << "On process: " << rank << ", Total particles of all species: "
+              << group.getTotalParticles() << std::endl;
+    // 3.
+    this->particle_cls_link2eq(equ);
+    // 4. =================Load Markers=====================
+    for (int i = 0; i < nsp; i++) {
+      {
+        auto &species = group.getSpecies(i);
+        this->particle_cls_set_parms(equ, species, rank);
+        std::cout << "Finish particle_cls_set_parms...\n";
+        this->particle_cls_loadmarker(equ, species);
+      }
+    }
+  }
+
+  Particle(Equilibrium &equ_in, ParticleSpecies &sp_in, int rank,
+           int mpisize_in)
+      : equ(equ_in) {
+
+    std::cout << "Instance Particle @process " << rank << " of " << mpisize_in
+              << ".\n";
+    // 1. READINPUT
+    nsp = 1; // Only one species in this case
+    group.addSpecies(std::make_shared<ParticleSpecies>(sp_in));
+    if (rank == 0) {
     }
     // 2. Summay of particles
     std::cout << "On process: " << rank << ", Total particles of all species: "
@@ -690,22 +862,6 @@ public:
     }
   }
 
-  double getTem1d(double radius) {
-    // Implement function to get temperature based on radius
-    return 1.0; // Placeholder
-  }
-
-  double getdens1d(double radius) {
-    // Implement function to get density
-    return 1.0; // Placeholder
-  }
-
-  double getdens1d_can(Equilibrium &equ, double radius, double theta,
-                       double vpar, double mu) {
-    // Implement function to get canonical density
-    return 1.0; // Placeholder
-  }
-
   double gennor(double mu, double sigma) {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -719,8 +875,9 @@ public:
     return 1.0; // Placeholder
   }
 
-  void particle_cls_mean_dens(const Equilibrium &equ, double rmin, double rmax,
-                              int nrad, int nthe, double &volume,
+  void particle_cls_mean_dens(const Equilibrium &equ,
+                              const ParticleSpecies &species, double rmin,
+                              double rmax, int nrad, int nthe, double &volume,
                               double &int_dens, double &mean_dens,
                               double &Stot) {
     // Working variables
@@ -765,7 +922,7 @@ public:
         double jaco3 = jaco2 * equ.getR(xrad[fic], xthe[fjc]);
 
         volume += w12 * jaco3;
-        int_dens += w12 * jaco3 * this->getdens1d(xrad[fic]);
+        int_dens += w12 * jaco3 * species.getdens1d(xrad[fic]);
         Stot += w12 * jaco2;
       }
     }
@@ -784,7 +941,7 @@ public:
 
     // Initialize default values
     ischeme_motion = 2;
-    ngyro = 1;
+    int ngyro = 1;
     irandom_gy = 1;
     iuseprv = false;
 
@@ -830,7 +987,7 @@ public:
 
     // Set parameters for all species
     ischeme_motion = ischeme_motion;
-    ngyro = ngyro;
+    ngyro = species.getNgyro();
     irandom_gy = irandom_gy;
     imixvar = imixvar;
     // Physics
@@ -922,12 +1079,12 @@ public:
 
     Nphimult = Nphimult;
     // Control variables
-    v_par0 = v_par0;
-    v_d = v_d;
-    v_mirror = v_mirror;
-    v_ExB = v_ExB;
-    v_Epar = v_Epar;
-    idwdt = idwdt;
+    // v_par0 = v_par0;
+    // v_d = v_d;
+    // v_mirror = v_mirror;
+    // v_ExB = v_ExB;
+    // v_Epar = v_Epar;
+    // idwdt = idwdt;
 
     irec_track = irec_track;
     irec_Eparticle = irec_Eparticle;
@@ -974,7 +1131,7 @@ public:
     //             << i << "]=" << wrad_test[i] << std::endl;
     // }
 
-    this->particle_cls_mean_dens(equ, this->rmin, this->rmax, 100, 200,
+    this->particle_cls_mean_dens(equ, species, this->rmin, this->rmax, 100, 200,
                                  this->Vtot, this->dens_intg, this->dens_mean,
                                  this->Stot);
     std::cout << "Vtot=" << Vtot << ", dens_intg=" << dens_intg
@@ -1159,7 +1316,7 @@ public:
     double rndmu4 = vpar0;
     double rndsd4;
     for (fic = 0; fic < nptot; ++fic) {
-      Tpar = getTem1d(partrad[fic]);
+      Tpar = species.getTem1d(partrad[fic]);
       rndsd4 = sqrt(Tpar / mass) * sqrt(1.0 / 2.0);
       double rndf8 = gennor(rndmu4, rndsd4);
       while (abs(rndf8) >= vparmaxovN) {
@@ -1172,7 +1329,7 @@ public:
     zwidprod = phitorwid * rwid * 2.0 * M_PI;
 
     for (fic = 0; fic < nptot; ++fic) {
-      Tperp = getTem1d(partrad[fic]);
+      Tperp = species.getTem1d(partrad[fic]);
       double rndf8 = static_cast<double>(rand()) / RAND_MAX;
 
       BB = equ.getB(partrad[fic], parttheta[fic]);
@@ -1187,10 +1344,10 @@ public:
 
       // 1b. full weight
       if (load_can == 0) {
-        partfog[fic] = getdens1d(partrad[fic]) / dens_mean;
+        partfog[fic] = species.getdens1d(partrad[fic]) / dens_mean;
       } else if (load_can == 1) {
-        partfog[fic] = getdens1d_can(equ, partrad[fic], parttheta[fic],
-                                     partvpar[fic], partmu[fic]) /
+        partfog[fic] = species.getdens1d_can(equ, partrad[fic], parttheta[fic],
+                                             partvpar[fic], partmu[fic]) /
                        dens_mean;
       }
 

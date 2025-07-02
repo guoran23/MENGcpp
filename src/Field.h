@@ -27,12 +27,11 @@
 #include <vector>
 // #include <petsc.h>
 
-
-void setbuffcoef(const std::array<double, 2>& rminbuff, std::array<double, 4>& coefminbuff);
+void setbuffcoef(const std::array<double, 2> &rminbuff,
+                 std::array<double, 4> &coefminbuff);
 
 class FieldCls {
 private:
-  Equilibrium equ;
   int rank = 0;
   int size = 0;
 
@@ -63,6 +62,7 @@ public:
   int bcrad;
   int nradfem, nthefem, nphifem;
   int ntotfem, ntotdof;
+  int ntotfem2d1f;
 
   // Filter
   int ifilter = 1, filter_m0 = -5, filter_m1 = -2, filter_nc = 2;
@@ -74,7 +74,6 @@ public:
   double coefminbuff[4], coefmaxbuff[4];
 
   // Physics parameters
-  // SplineCubic3DExtCls spc;
   SplineCubic2d1f spc;
   double TA, wTAE, Cpoisson, Campere;
 
@@ -94,6 +93,8 @@ public:
   // Timer
 
   // Methods
+  //Getters
+  int getNtotfem2d1f() const { return ntotfem2d1f; }
   void readInput(const std::string &inputFile);
   void field_cls_init(const Equilibrium &equ);
   void field_cls_set_parms();
@@ -105,9 +106,21 @@ public:
       const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
       const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
       const std::vector<double> &ptthe1d, const std::vector<double> &ptphi1d,
-      std::vector<double> &ptf1d, const std::array<int,3> &idiff, int ngyro,
+      std::vector<double> &ptf1d, const std::array<int, 3> &idiff, int ngyro,
       const std::vector<double> &rho1);
+  void field_cls_g2p2d1f_general(
+    const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
+    const std::vector<int> &ntor1d, const double ptrad1d, const double ptthe1d,
+    const double ptphi1d, double &ptf1d, const std::array<int, 3> &idiff,
+    int ngyro, double rho1);
 
+  void field_cls_g2p2d1f_grad(const Equilibrium &equ,
+                              const std::vector<std::complex<double>> &f1d,
+                              const std::vector<int> &ntor1d,
+                              const double ptrad1d, const double ptthe1d,
+                              const double ptphi1d, double &ptf1d100,
+                              double &ptf1d010, double &ptf1d001, int ngyro,
+                              double rho1);
   void field_cls_g2p2d1f_grad(
       const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
       const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
@@ -115,6 +128,7 @@ public:
       std::vector<double> &ptf1d100, std::vector<double> &ptf1d010,
       std::vector<double> &ptf1d001, int ngyro,
       const std::vector<double> &rho1);
+
   void field_cls_final();
 
   // default Constructor
@@ -125,7 +139,7 @@ public:
     rank = mpiManager.getRank();
     size = mpiManager.getSize();
     std::cout << "FieldCls default constructor called"
-                << std::endl; // For debugging    
+              << std::endl; // For debugging
   }
 };
 

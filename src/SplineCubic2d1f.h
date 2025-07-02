@@ -18,7 +18,6 @@
 class SplineCubic2d1f {
 private:
   SplineCubicNdCls spline2d; // 组合一个 Nd 版本的样条类
-  std::vector<int> ntor1d;   // toroidal modes
   int ndim = 3;              // Number of dimensions
   int norder = 4;            // Spline order (e.g., 4 for cubic)
   int nintg;                 // Integration points
@@ -55,6 +54,7 @@ private:
 
   // index of boundary and free nodes
   int ntot12fem, ntot12dof;
+  int ntotfem2d1f; // Total finite elements in 2D1F
 
   // Control parameters
   bool nl_debug; // Debug flag
@@ -76,7 +76,6 @@ private:
 
 public:
   // geters
-  const std::vector<int> &getNtor1d() const { return ntor1d; }
   const std::vector<int> &getNnodeArr() const { return nnode_arr; }
   const std::vector<double> &get_z1d1() const { return z1d1; }
   const std::vector<double> &get_z1d2() const { return z1d2; }
@@ -109,6 +108,10 @@ public:
     pf1d.assign(pf1d.size(), 0.0);
     int np = prad1d.size();
     int lenntor = ntor1d.size();
+    if (f1d.size() != ntot12fem * lenntor) {
+      std::cerr << "----error of f1d size in spc_cls_sp2p2d1f----" << std::endl;
+      return;
+    }
 
     for (int fpc = 0; fpc < np; ++fpc) {
       double rad1 = prad1d[fpc];
@@ -151,16 +154,19 @@ public:
         }   // itheshift
 
         double f1or2 = (ntor1d[itor] != 0) ? 2.0 : 1.0;
-        std::complex comp =
-            std::pow(std::complex<double>(0.0, ntor1d[itor]), idiff[2]);
+        std::complex<double> base(0.0, ntor1d[itor]);
+        std::complex<double> comp =
+            (idiff[2] == 0) ? std::complex<double>(1.0, 0.0) : base;
+
         pf1d[fpc] += f1or2 * std::real(pfradthe_c16 * comp *
                                        std::exp(std::complex<double>(
                                            0.0, 1.0 * ntor1d[itor] * phi1)));
       } // itor
     }   // fpc
 
-    double yfac =
-        std::pow(dz_arr[0], -idiff[0]) * std::pow(dz_arr[1], -idiff[1]);
+    double yfac = ((idiff[0] == 1) ? (1.0 / dz_arr[0]) : 1.0) *
+                  ((idiff[1] == 1) ? (1.0 / dz_arr[1]) : 1.0);
+
     for (double &val : pf1d) {
       val *= yfac;
     }
@@ -184,6 +190,11 @@ public:
 
     int np = prad1d.size();
     int lenntor = ntor1d.size();
+    if (f1d.size() != ntot12fem * lenntor) {
+      std::cerr << "----error of f1d size in spc_cls_sp2p2d1f_grad----"
+                << std::endl;
+      return;
+    }
 
     for (int fpc = 0; fpc < np; ++fpc) {
       double rad1 = prad1d[fpc];

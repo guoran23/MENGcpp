@@ -17,8 +17,9 @@ public:
   int ntotfem2d1f, ntotdof2d1f;
   std::vector<int> idxdof2d1f;
 
-  std::vector<std::complex<double>> denskMkj, phik, jparkMkj, apark, aparsk,
-      aparhk;
+  std::vector<std::complex<double>> denskMkj, phik, jparkMkj, apark;
+  // std::vector<std::complex<double>> aparsk, aparhk;
+  // int imixvar = 0; //1 mixing variable 
 
   // Solvers
   // SolverExtCls svPoisson, svAmpere, svAhcorr, svOhm;
@@ -32,27 +33,9 @@ public:
 
   // Methods
   void init(const Equilibrium &equ, std::vector<ParticleSpecies> &pt);
-  void initializePerturbations();
-  void finalize();
+  void initializePerturbations(const Equilibrium &equ);
   void restart(int flag){};
   void field_ext_cls_test(const Equilibrium &equ, ParticleSpecies &pt);
-
-  void g2p2g();
-  void g2p2g_2sp();
-
-  void solve_dAdt();
-  void solve_poisson();
-  void solve_ampere();
-  void solve_poisson_ampere();
-
-  void solve_Acorr();
-  void pullback();
-
-  void apply_vec_bc();
-  void apply_buff();
-
-  void record2h5();
-  void record1d();
 };
 
 // Implementation of init() method
@@ -87,33 +70,19 @@ void FieldExtCls::init(const Equilibrium &equ,
   this->jparkMkj.resize(this->ntotfem2d1f);
   this->apark.resize(this->ntotfem2d1f);
 
-  if (this->imixvar == 1) {
-    this->aparsk.resize(this->ntotfem2d1f, 0.0);
-    this->aparhk.resize(this->ntotfem2d1f, 0.0);
-
-    if (this->irestart) {
-      restart(0);
-    }
-  }
-
   // Initialize perturbation fields==0
   for (int i = 0; i < this->ntotfem2d1f; ++i) {
     this->denskMkj[i] = 0.0;
     this->phik[i] = 0.0;
     this->jparkMkj[i] = 0.0;
     this->apark[i] = 0.0;
-    if (this->imixvar == 1) {
-      this->aparsk[i] = 0.0;
-      this->aparhk[i] = 0.0;
-    }
+    
   }
   // Initialize Ana Gauss perturbation fields
-  initializePerturbations();
-  
-  
+  initializePerturbations(equ);
 }
 
-void FieldExtCls::initializePerturbations() {
+void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
   double dtheta = 2 * M_PI / nthe; // periodic in theta
   double drad = (radmax - radmin) / (nrad - 1);
   if (rank == 0) {
@@ -131,6 +100,7 @@ void FieldExtCls::initializePerturbations() {
   std::vector<double> rc1_arr(this->lenntor, 0.5);
   std::vector<double> amp_arr(this->lenntor, 0.1);
   std::vector<double> rwidth_arr(this->lenntor, 0.1);
+  std::vector<double> omega_arr(this->lenntor, 1.0); // real frequency
   std::vector<int> mpoloidal_arr(this->lenntor);
 
   for (int i = 0; i < this->lenntor; ++i) {
@@ -146,12 +116,13 @@ void FieldExtCls::initializePerturbations() {
                 << ", mpoloidal=" << mpoloidal_arr[i] << "\n";
     }
   }
-
+  // give a MHD perturbation delta A_//=i/omega* \partial_// delta Phi
   for (int itor = 0; itor < this->lenntor; ++itor) {
     double rc1 = rc1_arr[itor];
     double amp = amp_arr[itor];
     double rwidth = rwidth_arr[itor];
     int mpoloidal = mpoloidal_arr[itor];
+    double omega = omega_arr[itor];
     for (int j = 0; j < nthefem; ++j) {
       for (int i = 0; i < nradfem; ++i) {
 
@@ -175,15 +146,38 @@ void FieldExtCls::initializePerturbations() {
             std::exp(std::complex<double>(0, mpoloidal * theta));
 
         this->phik[idx] = radial_part * angular_part;
+
+        // 计算对应的 A_//=i/omega * \partial_// delta Phi
+        double ww = 0.0;
+        if (i == 0 || i == nradfem - 1) {
+          ww = 0.0; // 边界条件
+        } else {
+          double ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe;
+          double ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12, ptg22;
+          equ.calcBJgij(r, theta, ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe,
+                        ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12,
+                        ptg22);
+          ww = -(mpoloidal * ptBthe_ct + ntor1d[itor] * ptBphi_ct) /
+                      ptB / omega;
+        }
+
+        this->apark[idx] = std::complex<double>(ww, 0) * radial_part * angular_part;
       }
     }
   }
+
   if (rank == 0) {
     std::vector<double> phik_real(phik.size());
     std::transform(phik.begin(), phik.end(), phik_real.begin(),
                    [](const std::complex<double> &z) { return std::real(z); });
 
     UtilIO::write_arr1d_r8(phik_real, "data_phik_initial.txt", true);
+
+    // 写出 apark 的实部
+    std::vector<double> apark_real(apark.size());
+    std::transform(apark.begin(), apark.end(), apark_real.begin(),
+                   [](const std::complex<double> &z) { return std::real(z); });
+    UtilIO::write_arr1d_r8(apark_real, "data_apark_initial.txt", true);
   }
 }
 void FieldExtCls::field_ext_cls_test(const Equilibrium &equ,

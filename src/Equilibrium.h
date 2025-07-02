@@ -14,6 +14,7 @@
 
 #include "../inih/INIReader.h"
 #include "constants.h"
+#include "util_math.h"
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -234,7 +235,7 @@ public:
 
   double getjaco2(double rad, double the) const;
   double getjaco3(double rad, double the) const;
-
+  
   double getqloc_rt(double rad, double the) const;
   double getdqdrloc_rt(double rad, double the) const;
   double getfpol_r(double rad) const;

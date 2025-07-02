@@ -78,7 +78,7 @@ void Equilibrium::equil_cls_calc_derived(int rank) {
   }
 
   if (isource_ref == 1) {
-    //giving rhoN betaN to derive nref, Tref
+    // giving rhoN betaN to derive nref, Tref
     Tref = (rhoN * charge_unit * Bref) * (rhoN * charge_unit * Bref) /
            (2.0 * mass_unit * charge_unit);
     nref = betaN * Bref * Bref / (2.0 * Tref * charge_unit * mu0);
@@ -87,7 +87,7 @@ void Equilibrium::equil_cls_calc_derived(int rank) {
     vA = Bref / std::sqrt(mu0 * nref * mass_unit);
     vth = std::sqrt(2.0 * Tref * charge_unit / mass_unit);
   } else if (isource_ref == 2) {
-    //giving nref, Tref to derive rhoN betaN
+    // giving nref, Tref to derive rhoN betaN
     vA = Bref / std::sqrt(mu0 * nref * mass_unit);
     vth = std::sqrt(2.0 * Tref * charge_unit / mass_unit);
 
@@ -162,14 +162,14 @@ double Equilibrium::gettheRZ(double RR, double ZZ) const {
   if (iequmodel == 1) {
     // For model 1, the logic is simpler
     var = std::atan2(ZZ - zmaxis, RR - rmaxis);
-    var = std::fmod(var, twopi); // Use fmod to calculate the modulus
+    var = UtilMath::modulo(var, twopi); // Use fmod to calculate the modulus
   } else if (iequmodel == 2) {
     // For model 2, more complex calculation
     rormaj = getradRZ(RR, ZZ) / rmaxis;
     var = std::atan2(ZZ - zmaxis, RR - rmaxis);
     var = 2 * std::atan(std::sqrt((1.0 - rormaj) / (1.0 + rormaj)) *
                         std::tan(var / 2.0));
-    var = std::fmod(var, twopi);
+    var = UtilMath::modulo(var, twopi);
 
     // Check for the value of var and reset to 0 if not in the valid range
     if (var < 0.0 || var > twopi) {
@@ -211,7 +211,7 @@ void Equilibrium::calcBJgij(double rad, double the0, double &RR, double &ZZ,
                             double &FF, double &g11, double &g12,
                             double &g22) const {
   // input rad, the0
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation to wrap the angle
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation to wrap the angle
   double drdR, drdZ, dtdR, dtdZ;
 
   // Call to another member function
@@ -251,7 +251,7 @@ double Equilibrium::geth_adhoc(double rad, double the, double rmaxis) const {
 double Equilibrium::getBthe_ct(double rad, double the0) const {
   double var = 0.0;
   double drdR, drdZ, dtdR, dtdZ, jaco2, RR;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
 
   if (iequmodel == 1) {
     calcdrtdRZ(rad, the, drdR, drdZ, dtdR, dtdZ, jaco2);
@@ -269,7 +269,7 @@ double Equilibrium::getBthe_ct(double rad, double the0) const {
 // Function to calculate Bphi_ct
 double Equilibrium::getBphi_ct(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
 
   if (iequmodel == 1) {
     double RR = getR(rad, the);
@@ -284,7 +284,7 @@ double Equilibrium::getBphi_ct(double rad, double the0) const {
 // Function to calculate B
 double Equilibrium::getB(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double rormaj = 0.0;
   int idx = 0, idy = 0, iflag = 0;
 
@@ -309,7 +309,7 @@ double Equilibrium::getB(double rad, double the0) const {
 // Function to calculate dBdrad
 double Equilibrium::getdBdrad(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double rormaj = 0.0, qloc = 0.0;
   int idx = 1, idy = 0, iflag = 0;
 
@@ -346,7 +346,7 @@ double Equilibrium::getdBdrad(double rad, double the0) const {
 // Function to calculate dB/dthe
 double Equilibrium::getdBdthe(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double rormaj = 0.0, qloc = 0.0;
 
   if (iequmodel == 1) {
@@ -373,7 +373,7 @@ double Equilibrium::getdBdthe(double rad, double the0) const {
 // Function to calculate Brad_co
 double Equilibrium::getBrad_co(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double rormaj = 0.0;
 
   if (iequmodel == 1) {
@@ -398,7 +398,7 @@ double Equilibrium::getBrad_co(double rad, double the0) const {
 // Function to calculate dBrad_co/drad
 double Equilibrium::getdBrad_codrad(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double rormaj = 0.0;
 
   if (iequmodel == 1) {
@@ -424,7 +424,7 @@ double Equilibrium::getdBrad_codrad(double rad, double the0) const {
 // Function to calculate dBrad_co/dthe
 double Equilibrium::getdBrad_codthe(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double rormaj = 0.0;
 
   if (iequmodel == 1) {
@@ -448,7 +448,7 @@ double Equilibrium::getdBrad_codthe(double rad, double the0) const {
 
 double Equilibrium::getBthe_co(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double rormaj = 0.0;
 
   if (iequmodel == 1) {
@@ -485,7 +485,7 @@ double Equilibrium::getBphi_co(double rad, double the0) const {
 // Function to calculate dBthe_codrad
 double Equilibrium::getdBthe_codrad(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double rormaj = 0.0;
 
   if (iequmodel == 1) {
@@ -510,7 +510,7 @@ double Equilibrium::getdBthe_codrad(double rad, double the0) const {
 // Function to calculate dBthe_codthe
 double Equilibrium::getdBthe_codthe(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double rormaj = 0.0;
 
   if (iequmodel == 1) {
@@ -531,7 +531,7 @@ double Equilibrium::getdBthe_codthe(double rad, double the0) const {
 // Function to calculate Bdirect
 double Equilibrium::getBdirect(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double drdR = 0.0, drdZ = 0.0, dtdR = 0.0, dtdZ = 0.0, jaco2 = 0.0;
   double FF = 0.0, g11 = 0.0, RR = 0.0;
 
@@ -559,7 +559,7 @@ double Equilibrium::getBdirect(double rad, double the0) const {
 // Function to calculate Brad_co_direct
 double Equilibrium::getBrad_co_direct(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double drdR = 0.0, drdZ = 0.0, dtdR = 0.0, dtdZ = 0.0, jaco2 = 0.0;
   double g12 = 0.0, RR = 0.0;
 
@@ -579,7 +579,7 @@ double Equilibrium::getBrad_co_direct(double rad, double the0) const {
 
 double Equilibrium::getBthe_co_direct(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double drdR = 0.0, drdZ = 0.0, dtdR = 0.0, dtdZ = 0.0, jaco2 = 0.0;
   double g11 = 0.0, RR = 0.0;
 
@@ -615,7 +615,7 @@ double Equilibrium::getsin_straight_adhoc(double rad, double the0,
 // Function to get R
 double Equilibrium::getR(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   int idx = 0, idy = 0, iflag = 0;
 
   if (iequmodel == 1) {
@@ -633,7 +633,7 @@ double Equilibrium::getR(double rad, double the0) const {
 // Function to get the derivative of R with respect to rad
 double Equilibrium::getdRdrad(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   double rormaj = rad / rmaxis;
 
   if (iequmodel == 1) {
@@ -679,7 +679,7 @@ double Equilibrium::getdRdthe(double rad, double the0) const {
 // Function to get Z
 double Equilibrium::getZ(double rad, double the0) const {
   double var = 0.0;
-  double the = std::fmod(the0, 2 * M_PI); // Modulo operation
+  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation
   int idx = 0, idy = 0, iflag = 0;
 
   if (iequmodel == 1) {
@@ -871,5 +871,31 @@ double Equilibrium::getjaco3(double rad, double the) const {
 
   var = RR * (dRdrad * dZdthe - dRdthe * dZdrad);
 
+  return var;
+}
+
+double Equilibrium::getcurlbrad_ct(double rad, double the) const {
+  double var = 0.0;
+  double BB = getB(rad, the);
+
+  var = getBphi_co(rad, the) * getdBdthe(rad, the) /
+        (getjaco3(rad, the) * BB * BB);
+  return var;
+}
+double Equilibrium::getcurlbthe_ct(double rad, double the0) const {
+  double var = 0.0;
+  double BB = getB(rad, the0);
+  var = -getBphi_co(rad, the0) * getdBdrad(rad, the0) /
+        (getjaco3(rad, the0) * BB * BB);
+  return var;
+}
+double Equilibrium::getcurlbphi_ct(double rad, double the0) const {
+  double BB = getB(rad, the0);
+  double jaco3 = getjaco3(rad, the0);
+  double var =
+      -(getBrad_co(rad, the0) * getdBdthe(rad, the0) -
+        getBthe_co(rad, the0) * getdBdrad(rad, the0)) /
+          (jaco3 * BB * BB) +
+      (getdBrad_codthe(rad, the0) - getdBthe_codrad(rad, the0)) / (jaco3 * BB);
   return var;
 }
