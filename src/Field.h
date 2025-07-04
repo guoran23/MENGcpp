@@ -128,6 +128,23 @@ public:
       std::vector<double> &ptf1d100, std::vector<double> &ptf1d010,
       std::vector<double> &ptf1d001, int ngyro,
       const std::vector<double> &rho1);
+  void field_cls_g2p2d1f_grad_complex(
+    const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
+    const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
+    const std::vector<double> &ptthe1d, const std::vector<double> &ptphi1d,
+    std::vector<std::complex<double>> &ptf1d100_c,
+    std::vector<std::complex<double>> &ptf1d010_c,
+    std::vector<std::complex<double>> &ptf1d001_c, int ngyro,
+    const std::vector<double> &rho1);
+   void field_cls_g2p2d1f_grad_complex(
+    const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
+    const std::vector<int> &ntor1d, 
+    const double ptrad1d, const double ptthe1d,
+    const double ptphi1d, 
+    std::vector<std::complex<double>> &ptf1d100_c,
+    std::vector<std::complex<double>> &ptf1d010_c,
+    std::vector<std::complex<double>> &ptf1d001_c,
+    int ngyro, double rho1) ; 
 
   void field_cls_final();
 

@@ -19,11 +19,7 @@ public:
 
   std::vector<std::complex<double>> denskMkj, phik, jparkMkj, apark;
   // std::vector<std::complex<double>> aparsk, aparhk;
-  // int imixvar = 0; //1 mixing variable 
-
-  // Solvers
-  // SolverExtCls svPoisson, svAmpere, svAhcorr, svOhm;
-  // DataC16ConvergeCls cvg;
+  // int imixvar = 0; //0, no mixvar, 1 mixing variable
 
   // Constructor & Destructor
   FieldExtCls() {
@@ -36,7 +32,171 @@ public:
   void initializePerturbations(const Equilibrium &equ);
   void restart(int flag){};
   void field_ext_cls_test(const Equilibrium &equ, ParticleSpecies &pt);
+  void field_ext_cls_calc_W(std::vector<double> &WWW, const Equilibrium &equ,
+                            Particle &pt,
+                            const std::vector<std::complex<double>> &phik_c,
+                            const std::vector<int> &ntor1d);
+  void field_ext_cls_calc_T(
+      std::vector<std::complex<double>> &TTT, const Equilibrium &equ,
+      ParticleSpecies &species, const std::vector<double> &partrad0,
+      const std::vector<double> &parttheta0,
+      const std::vector<double> &partphitor0,
+      const std::vector<double> &partvpar0, const std::vector<double> &partmu0,
+      const std::vector<double> &partw0, const std::vector<double> &partfog0,
+      std::vector<double> &draddt, std::vector<double> &dthetadt,
+      std::vector<double> &dphitordt, std::vector<double> &dvpardt,
+      std::vector<double> &dwdt, int icase,
+      const std::vector<std::complex<double>> &phik_c,
+      const std::vector<int> &ntor1d);
 };
+#endif // FIELDEXTCLS_H
+
+void FieldExtCls::field_ext_cls_calc_W(
+    std::vector<double> &WWW, const Equilibrium &equ, Particle &pt,
+    const std::vector<std::complex<double>> &phik_c,
+    const std::vector<int> &ntor1d) {
+  int nsp = pt.getNsp();
+  int nrad = this->nrad;
+  int nthe = this->nthe;
+  double rmax = this->radmax;
+  double rmin = this->radmin;
+  lenntor = ntor1d.size();
+  WWW.assign(lenntor, 0.0);
+
+  for (int isp = 0; isp < nsp; ++isp) {
+    ParticleSpecies &species = pt.group.getSpecies(isp);
+    int nptot = species.getNptot();
+    if (nptot == 0) {
+      std::cout << "Warning: ParticleSpecies " << isp
+                << " has no particles, skipping." << std::endl;
+      continue;
+    }
+    double mass = species.getMass();
+    std::vector<double> xrad(nrad), wrad(nrad);
+    std::vector<double> xthe(nthe), wthe(nthe);
+    UtilMath::lgwt(nrad, rmin, rmax, xrad, wrad);
+    double twopi = 2.0 * M_PI;
+    UtilMath::lgwt(nthe, 0.0, twopi, xthe, wthe);
+    // Nested loop for computation
+    double volume = 0.0;
+    double int_dens = 0.0;
+    for (int fic = 0; fic < nrad; ++fic) {
+      for (int fjc = 0; fjc < nthe; ++fjc) {
+        double w12 = wrad[fic] * wthe[fjc];
+        double ptrad = xrad[fic];
+        double ptthe = xthe[fjc];
+        double ptphi = 0.0; //
+        double ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe;
+        double ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12, ptg22, dfdpar;
+        equ.calcBJgij(ptrad, ptthe, ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe,
+                      ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12, ptg22);
+
+        double jaco3 = ptjaco2 * ptRR;
+
+        std::vector<std::complex<double>> dfdrad_c, dfdthe_c, dfdphi_c;
+        field_cls_g2p2d1f_grad_complex(equ, phik_c, ntor1d, ptrad, ptthe, ptphi,
+                                       dfdrad_c, dfdthe_c, dfdphi_c, 1, 0.0);
+
+        volume += w12 * jaco3;
+        int_dens += w12 * jaco3 * species.getdens1d(ptrad);
+
+        double dens_rad = species.getdens1d(ptrad);
+        double ptB2 = ptB * ptB;
+        for (int itor = 0; itor < lenntor; ++itor) {
+          // Calculate W for each toroidal mode
+          double nabla_perp_phi =
+              ptg11 * std::norm(dfdrad_c[itor]) +
+              2.0 * ptg12 *
+                  (dfdrad_c[itor].real() * dfdthe_c[itor].real() +
+                   dfdrad_c[itor].imag() * dfdthe_c[itor].imag()) +
+              ptg22 * std::norm(dfdthe_c[itor]);
+
+          nabla_perp_phi *= mass * dens_rad / (ptB2);
+          WWW[itor] += nabla_perp_phi * w12 * jaco3;
+        }
+
+      } // nthe
+    }   // nrad
+  }     // nsp
+  for (int itor = 0; itor < lenntor; ++itor) {
+    // integrate over toroidal angle
+    WWW[itor] *= twopi;
+  }
+}
+// calculate T for the particles
+void FieldExtCls::field_ext_cls_calc_T(
+    std::vector<std::complex<double>> &TTT, const Equilibrium &equ,
+    ParticleSpecies &species, const std::vector<double> &partrad0,
+    const std::vector<double> &parttheta0,
+    const std::vector<double> &partphitor0,
+    const std::vector<double> &partvpar0, const std::vector<double> &partmu0,
+    const std::vector<double> &partw0, const std::vector<double> &partfog0,
+    std::vector<double> &draddt, std::vector<double> &dthetadt,
+    std::vector<double> &dphitordt, std::vector<double> &dvpardt,
+    std::vector<double> &dwdt, int icase,
+    const std::vector<std::complex<double>> &phik_c,
+    const std::vector<int> &ntor1d) {
+
+  int nrad = this->nrad;
+  int nthe = this->nthe;
+  double rmax = this->radmax;
+  double rmin = this->radmin;
+
+  std::complex<double> zero_c(0.0, 0.0);
+  TTT.assign(this->lenntor, zero_c); // Initialize TTT with complex
+
+  int nptot = species.getNptot();
+  double mass = species.getMass();
+  int nptot_all = species.getNptotAll();
+  double zcharge = species.getCharge();
+  double nsonN = species.getNsonN();
+  double Tem = species.getTem();
+  int sp_id = species.getSpId();
+  int ideltaf = species.getideltaf();
+  double Cp2g = species.getCp2g();
+  // ParticleCoords &coords = species.getCoords();
+  // Particle loop for deposition
+  for (int fic = 0; fic < nptot; ++fic) {
+    double ptrad = partrad0[fic];
+    double ptthe = parttheta0[fic];
+    double ptphi = partphitor0[fic];
+    double ptvpar = partvpar0[fic];
+    double ptw = partw0[fic];
+    double ptmu = partmu0[fic];
+    double ptfog = partfog0[fic];
+    double ptdraddt = draddt[fic];
+    double ptdthedt = dthetadt[fic];
+    double ptdphidt = dphitordt[fic];
+
+    double ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe;
+    double ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12, ptg22, dfdpar;
+    equ.calcBJgij(ptrad, ptthe, ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe, ptBthe_ct,
+                  ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12, ptg22);
+
+    double jaco3 = ptjaco2 * ptRR;
+
+    std::vector<std::complex<double>> dfdrad_c, dfdthe_c, dfdphi_c;
+    field_cls_g2p2d1f_grad_complex(equ, phik_c, ntor1d, ptrad, ptthe, ptphi,
+                                   dfdrad_c, dfdthe_c, dfdphi_c, 1, 0.0);
+
+    int lenntor = this->lenntor;
+    std::complex<double> phase_factor(0.0, 0.0);
+    for (int itor = 0; itor < lenntor; ++itor) {
+      // Calculate the perturbation term
+      std::complex<double> i(0.0, 1.0); 
+      std::complex<double> phase_factor =
+          std::exp(-i * static_cast<double>(ntor1d[itor]) * ptphi);
+      TTT[itor] +=
+          ptw * phase_factor *
+          (ptdraddt * std::conj(dfdrad_c[itor]) + ptdthedt * std::conj(dfdthe_c[itor]));
+    }
+
+  } // nptot
+
+  for (int itor = 0; itor < lenntor; ++itor) {
+    TTT[itor] *= Cp2g * zcharge;
+  }
+}
 
 // Implementation of init() method
 void FieldExtCls::init(const Equilibrium &equ,
@@ -76,7 +236,6 @@ void FieldExtCls::init(const Equilibrium &equ,
     this->phik[i] = 0.0;
     this->jparkMkj[i] = 0.0;
     this->apark[i] = 0.0;
-    
   }
   // Initialize Ana Gauss perturbation fields
   initializePerturbations(equ);
@@ -157,11 +316,12 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
           equ.calcBJgij(r, theta, ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe,
                         ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12,
                         ptg22);
-          ww = -(mpoloidal * ptBthe_ct + ntor1d[itor] * ptBphi_ct) /
-                      ptB / omega;
+          ww =
+              -(mpoloidal * ptBthe_ct + ntor1d[itor] * ptBphi_ct) / ptB / omega;
         }
 
-        this->apark[idx] = std::complex<double>(ww, 0) * radial_part * angular_part;
+        this->apark[idx] =
+            std::complex<double>(ww, 0) * radial_part * angular_part;
       }
     }
   }
@@ -295,5 +455,3 @@ void FieldExtCls::field_ext_cls_test(const Equilibrium &equ,
   if (rank == 0)
     std::cout << "--------Field_Ext_Cls_Test Done--------\n";
 }
-
-#endif // FIELDEXTCLS_H

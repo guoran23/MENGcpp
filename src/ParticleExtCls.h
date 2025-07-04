@@ -49,9 +49,6 @@ public:
       int speciesIndex, Equilibrium &equ, FieldCls &fd,
       const std::vector<std::complex<double>> &phik,
       const std::vector<std::complex<double>> &apark,
-      const std::vector<std::complex<double>> &aparsk,
-      const std::vector<std::complex<double>> &aparhk,
-      const std::vector<std::complex<double>> &daparskdt,
       const std::vector<int> &ntor1d, const std::vector<double> &partrad0,
       const std::vector<double> &parttheta0,
       const std::vector<double> &partphitor0,
@@ -72,9 +69,6 @@ public:
       std::vector<double> &dwdt, int icase,
       const std::vector<std::complex<double>> &phik,
       const std::vector<std::complex<double>> &apark,
-      // const std::vector<std::complex<double>> &aparsk,
-      // const std::vector<std::complex<double>> &aparhk,
-      // const std::vector<std::complex<double>> &daparskdt,
       const std::vector<int> &ntor1d);
 };
 
@@ -84,9 +78,6 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f(
     int speciesIndex, Equilibrium &equ, FieldCls &fd,
     const std::vector<std::complex<double>> &phik,
     const std::vector<std::complex<double>> &apark,
-    const std::vector<std::complex<double>> &aparsk,
-    const std::vector<std::complex<double>> &aparhk,
-    const std::vector<std::complex<double>> &daparskdt,
     const std::vector<int> &ntor1d, const std::vector<double> &partrad0,
     const std::vector<double> &parttheta0,
     const std::vector<double> &partphitor0,
@@ -116,9 +107,6 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     std::vector<double> &dwdt, int icase,
     const std::vector<std::complex<double>> &phik_c,
     const std::vector<std::complex<double>> &apark_c,
-    // const std::vector<std::complex<double>> &aparsk,
-    // const std::vector<std::complex<double>> &aparhk,
-    // const std::vector<std::complex<double>> &daparskdt,
     const std::vector<int> &ntor1d) {
   // Precompute constant values
   ParticleSpecies &species = group.getSpecies(speciesIndex);
@@ -556,12 +544,11 @@ void ParticleExtCls::particle_ext_cls_test(Equilibrium &equ, FieldCls &fd,
 
     int ntotfem2d1f = fd.getNtotfem2d1f();
     std::vector<std::complex<double>> fk1(ntotfem2d1f, zero_complex),
-        fk2(ntotfem2d1f, zero_complex), fk3(ntotfem2d1f, zero_complex),
-        fk4(ntotfem2d1f, zero_complex), fk5(ntotfem2d1f, zero_complex);
+        fk2(ntotfem2d1f, zero_complex);
     //   Only test field can be used by particle
 
     this->particle_ext_cls_dxvpardt123EM2d1f(
-        i, equ, fd, fk1, fk2, fk3, fk4, fk5, fd.ntor1d, partrad, parttheta,
+        i, equ, fd, fk1, fk2, fd.ntor1d, partrad, parttheta,
         partphitor, partvpar, partmu, partw, partfog, dxvdt.partrad,
         dxvdt.parttheta, dxvdt.partphitor, dxvdt.partvpar, dxvdt.partw);
   }

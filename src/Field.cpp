@@ -263,10 +263,10 @@ void FieldCls::field_cls_g2p2d1f_general(
     int ngyro, double rho1) {
   std::vector<double> ptf1d_vec;
 
-  field_cls_g2p2d1f_general(
-      equ, f1d, ntor1d, std::vector<double>{ptrad1d},
-      std::vector<double>{ptthe1d}, std::vector<double>{ptphi1d}, ptf1d_vec,
-      idiff, ngyro, std::vector<double>{rho1});
+  field_cls_g2p2d1f_general(equ, f1d, ntor1d, std::vector<double>{ptrad1d},
+                            std::vector<double>{ptthe1d},
+                            std::vector<double>{ptphi1d}, ptf1d_vec, idiff,
+                            ngyro, std::vector<double>{rho1});
 
   ptf1d = ptf1d_vec[0];
 }
@@ -375,8 +375,6 @@ void FieldCls::field_cls_g2p2d1f_grad(
     spc.spc_cls_sp2p2d1f_grad(f1d, ntor1d, ptrad1d, ptthe1d, ptphi1d, ptf1d100,
                               ptf1d010, ptf1d001);
   } else {
-    std::vector<double> ptf1dgy100(np, 0.0), ptf1dgy010(np, 0.0),
-        ptf1dgy001(np, 0.0);
     std::vector<double> ptrad1dgy(np), ptthe1dgy(np);
     std::vector<double> ptgyangle(np), ptR(np), ptZ(np);
 
@@ -433,6 +431,110 @@ void FieldCls::field_cls_g2p2d1f_grad(
       ptf1d100[i] /= ngyro;
       ptf1d010[i] /= ngyro;
       ptf1d001[i] /= ngyro;
+    }
+  }
+
+  // timer.toc(3);
+}
+// calc grad and return complex value
+// 针对double的重载
+void FieldCls::field_cls_g2p2d1f_grad_complex(
+    const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
+    const std::vector<int> &ntor1d, 
+    const double ptrad1d, const double ptthe1d,
+    const double ptphi1d, 
+    std::vector<std::complex<double>> &ptf1d100_c,
+    std::vector<std::complex<double>> &ptf1d010_c,
+    std::vector<std::complex<double>> &ptf1d001_c,
+    int ngyro, double rho1) {
+  std::vector<std::complex<double>> ptf1d100_vec, ptf1d010_vec, ptf1d001_vec;
+
+  field_cls_g2p2d1f_grad_complex(
+      equ, f1d, ntor1d, std::vector<double>{ptrad1d},
+      std::vector<double>{ptthe1d}, std::vector<double>{ptphi1d}, ptf1d100_vec,
+      ptf1d010_vec, ptf1d001_vec, ngyro, std::vector<double>{rho1});
+
+  ptf1d100_c = ptf1d100_vec;
+  ptf1d010_c = ptf1d010_vec;
+  ptf1d001_c = ptf1d001_vec;
+}
+
+void FieldCls::field_cls_g2p2d1f_grad_complex(
+    const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
+    const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
+    const std::vector<double> &ptthe1d, const std::vector<double> &ptphi1d,
+    std::vector<std::complex<double>> &ptf1d100_c,
+    std::vector<std::complex<double>> &ptf1d010_c,
+    std::vector<std::complex<double>> &ptf1d001_c, int ngyro,
+    const std::vector<double> &rho1) {
+  // timer.tic(3);
+
+  size_t np = ptrad1d.size();
+  std::complex<double> zero_c(0.0, 0.0);
+  ptf1d100_c.assign(np, zero_c);
+  ptf1d010_c.assign(np, zero_c);
+  ptf1d001_c.assign(np, zero_c);
+
+  if (ngyro <= 1) {
+    spc.spc_cls_sp2p2d1f_grad_complex(f1d, ntor1d, ptrad1d, ptthe1d, ptphi1d, ptf1d100_c,
+                              ptf1d010_c, ptf1d001_c);
+  } else {
+    std::vector<double> ptrad1dgy(np), ptthe1dgy(np);
+    std::vector<double> ptgyangle(np), ptR(np), ptZ(np);
+
+    // Initialize gyro angles
+    if (irandom_gy == 0) {
+      std::fill(ptgyangle.begin(), ptgyangle.end(), 0.0);
+    } else if (irandom_gy == 1) {
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      std::uniform_real_distribution<double> dist(0.0, 2 * M_PI);
+      for (auto &angle : ptgyangle)
+        angle = dist(gen);
+    } else if (irandom_gy == 2) {
+      ptgyangle = ptthe1d;
+    } else if (irandom_gy == 3) {
+      for (size_t i = 0; i < np; ++i) {
+        ptgyangle[i] = ptthe1d[i] + M_PI_2;
+      }
+    }
+
+    // Compute initial R and Z
+    for (size_t i = 0; i < np; ++i) {
+      ptR[i] = equ.getR(ptrad1d[i], ptthe1d[i]);
+      ptZ[i] = equ.getZ(ptrad1d[i], ptthe1d[i]);
+    }
+
+    // Gyro averaging
+    for (int fgc = 0; fgc < ngyro; ++fgc) {
+      for (size_t i = 0; i < np; ++i) {
+        double Rtmp = ptR[i] + cos(ptgyangle[i]) * rho1[i];
+        double Ztmp = ptZ[i] + sin(ptgyangle[i]) * rho1[i];
+
+        ptgyangle[i] += (2 * M_PI) / ngyro;
+
+        ptrad1dgy[i] = equ.getradRZ(Rtmp, Ztmp);
+        ptthe1dgy[i] = equ.gettheRZ(Rtmp, Ztmp);
+      }
+
+      std::vector<std::complex<double>> temp_ptf1dgy100(np, zero_c), temp_ptf1dgy010(np, zero_c),
+          temp_ptf1dgy001(np, zero_c);
+      spc.spc_cls_sp2p2d1f_grad_complex(f1d, ntor1d, ptrad1dgy, ptthe1dgy, ptphi1d,
+                                temp_ptf1dgy100, temp_ptf1dgy010,
+                                temp_ptf1dgy001);
+
+      for (size_t i = 0; i < np; ++i) {
+        ptf1d100_c[i] += temp_ptf1dgy100[i];
+        ptf1d010_c[i] += temp_ptf1dgy010[i];
+        ptf1d001_c[i] += temp_ptf1dgy001[i];
+      }
+    }
+
+    // Normalize by ngyro
+    for (size_t i = 0; i < np; ++i) {
+      ptf1d100_c[i] /= ngyro;
+      ptf1d010_c[i] /= ngyro;
+      ptf1d001_c[i] /= ngyro;
     }
   }
 

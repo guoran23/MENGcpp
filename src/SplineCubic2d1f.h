@@ -171,7 +171,7 @@ public:
       val *= yfac;
     }
   }
-
+  // calculate gradient of f1d
   void spc_cls_sp2p2d1f_grad(const std::vector<std::complex<double>> &f1d,
                              const std::vector<int> &ntor1d,
                              const std::vector<double> &prad1d,
@@ -184,29 +184,72 @@ public:
     std::vector<double> fNrad0_arr(4, 0.0), fNrad1_arr(4, 0.0);
     double fNthe0, fNthe1;
 
-    pdfdrad1d.assign(pdfdrad1d.size(), 0.0);
-    pdfdthe1d.assign(pdfdthe1d.size(), 0.0);
-    pdfdphi1d.assign(pdfdphi1d.size(), 0.0);
-
     int np = prad1d.size();
+    pdfdrad1d.assign(np, 0.0);
+    pdfdthe1d.assign(np, 0.0);
+    pdfdphi1d.assign(np, 0.0);
+
     int lenntor = ntor1d.size();
     if (f1d.size() != ntot12fem * lenntor) {
       std::cerr << "----error of f1d size in spc_cls_sp2p2d1f_grad----"
                 << std::endl;
       return;
     }
+    //
+    std::complex<double> zero_c(0.0, 0.0);
+    std::vector<std::complex<double>> dfdrad_c(np * lenntor, zero_c);
+    std::vector<std::complex<double>> dfdthe_c(np * lenntor, zero_c);
+    std::vector<std::complex<double>> dfdphi_c(np * lenntor, zero_c);
+    // calculate the complex gradient
+    spc_cls_sp2p2d1f_grad_complex(f1d, ntor1d, prad1d, pthe1d, pphi1d, dfdrad_c,
+                                  dfdthe_c, dfdphi_c);
+    // calculate the real gradient
+    for (int itor = 0; itor < lenntor; ++itor) {
+      double f1or2 = (ntor1d[itor] != 0) ? 2.0 : 1.0;
+      for (int j = 0; j < np; ++j) {
+        pdfdrad1d[j] += f1or2 * std::real(dfdrad_c[itor * np + j]);
+        pdfdthe1d[j] += f1or2 * std::real(dfdthe_c[itor * np + j]);
+        pdfdphi1d[j] += f1or2 * std::real(dfdphi_c[itor * np + j]);
+      }
+    }
+  }
+  // calculate the gradient of f1d complex
+  // size of f1d should be ntot12fem * lenntor
+  // size of pdfdrad1d_c, pdfdthe1d_c, pdfdphi1d_c should be np*lenntor
+  void spc_cls_sp2p2d1f_grad_complex(
+      const std::vector<std::complex<double>> &f1d,
+      const std::vector<int> &ntor1d, const std::vector<double> &prad1d,
+      const std::vector<double> &pthe1d, const std::vector<double> &pphi1d,
+      std::vector<std::complex<double>> &pdfdrad1d_c,
+      std::vector<std::complex<double>> &pdfdthe1d_c,
+      std::vector<std::complex<double>> &pdfdphi1d_c) {
+    int dimrad{0}, dimthe{1};
+    std::vector<double> fNrad0_arr(4, 0.0), fNrad1_arr(4, 0.0);
+    double fNthe0, fNthe1;
 
-    for (int fpc = 0; fpc < np; ++fpc) {
-      double rad1 = prad1d[fpc];
-      if (rad1 < zmin_arr[0] || rad1 > zmax_arr[0])
-        continue;
+    std::complex<double> zero_c(0.0, 0.0);
 
-      double the1 = UtilMath::modulo(pthe1d[fpc] - zmin_arr[1], zwid_arr[1]) +
-                    zmin_arr[1];
-      double phi1 = UtilMath::modulo(pphi1d[fpc] - zmin_arr[2], zwid_arr[2]) +
-                    zmin_arr[2];
+    size_t np = prad1d.size();
+    int lenntor = ntor1d.size();
+    pdfdrad1d_c.assign(np * lenntor, zero_c);
+    pdfdthe1d_c.assign(np * lenntor, zero_c);
+    pdfdphi1d_c.assign(np * lenntor, zero_c);
+    if (f1d.size() != ntot12fem * lenntor) {
+      std::cerr << "----error of f1d size in spc_cls_sp2p2d1f_grad----"
+                << std::endl;
+      return;
+    }
 
-      for (int itor = 0; itor < lenntor; ++itor) {
+    for (int itor = 0; itor < lenntor; ++itor) {
+      for (int fpc = 0; fpc < np; ++fpc) {
+        double rad1 = prad1d[fpc];
+        if (rad1 < zmin_arr[0] || rad1 > zmax_arr[0])
+          continue;
+
+        double the1 = UtilMath::modulo(pthe1d[fpc] - zmin_arr[1], zwid_arr[1]) +
+                      zmin_arr[1];
+        double phi1 = UtilMath::modulo(pphi1d[fpc] - zmin_arr[2], zwid_arr[2]) +
+                      zmin_arr[2];
         std::complex<double> pfradthe_c16[3] = {0.0, 0.0, 0.0};
         for (int itheshift = 0; itheshift <= 3; ++itheshift) {
           int ithefloorhere;
@@ -231,7 +274,7 @@ public:
                 }
                 pfrad_c16[0] += fNrad1_arr[iradshift] * f1d[idx123 - 1];
                 pfrad_c16[1] += fNrad0_arr[iradshift] * f1d[idx123 - 1];
-                // pfrad_c16(2) is same as pfrad_c16(1), fNrad0
+                // pfrad_c16[2] is same as pfrad_c16[1], fNrad0
               } // inside iradfloorhere >= 1
             }   // iradshift
             pfrad_c16[2] = pfrad_c16[1];
@@ -243,27 +286,29 @@ public:
           } // inside ithefloorhere >= 1
         }   // itheshift
 
-        double f1or2 = (ntor1d[itor] != 0) ? 2.0 : 1.0;
         std::complex<double> fNphi0_c16 =
             std::exp(std::complex<double>(0.0, 1.0 * ntor1d[itor] * phi1));
         std::complex<double> fNphi1_c16 =
             fNphi0_c16 * std::complex<double>(0.0, ntor1d[itor]);
 
-        pdfdrad1d[fpc] += f1or2 * std::real(pfradthe_c16[0] * fNphi0_c16);
-        pdfdthe1d[fpc] += f1or2 * std::real(pfradthe_c16[1] * fNphi0_c16);
-        pdfdphi1d[fpc] += f1or2 * std::real(pfradthe_c16[2] * fNphi1_c16);
-      } // itor
-    }   // fpc
+        int fpc_idx = fpc + itor * np;
+        pdfdrad1d_c[fpc_idx] += (pfradthe_c16[0] * fNphi0_c16);
+        pdfdthe1d_c[fpc_idx] += (pfradthe_c16[1] * fNphi0_c16);
+        pdfdphi1d_c[fpc_idx] += (pfradthe_c16[2] * fNphi1_c16);
+      } // fpc
+    }   // itor
 
-    // Convert division to multiplication by the reciprocal
+    // grid spacing factor
     double reciprocal = 1.0 / dz_arr[0];
-    std::transform(pdfdrad1d.begin(), pdfdrad1d.end(), pdfdrad1d.begin(),
-                   [reciprocal](double val) { return val * reciprocal; });
+    std::transform(
+        pdfdrad1d_c.begin(), pdfdrad1d_c.end(), pdfdrad1d_c.begin(),
+        [reciprocal](std::complex<double> val) { return val * reciprocal; });
+
     reciprocal = 1.0 / dz_arr[1];
-    // Use std::transform to multiply each element by reciprocal
-    std::transform(pdfdthe1d.begin(), pdfdthe1d.end(), pdfdthe1d.begin(),
-                   [reciprocal](double val) { return val * reciprocal; });
-    // no factor for pdfdphi1d
+    std::transform(
+        pdfdthe1d_c.begin(), pdfdthe1d_c.end(), pdfdthe1d_c.begin(),
+        [reciprocal](std::complex<double> val) { return val * reciprocal; });
+    // no factor for pdfdphi1d_c
   }
   // --------Utility subroutines--------
   void spc_cls_glb2loc(double XX0, int idirect, int ishift, int &ibas,

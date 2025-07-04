@@ -302,11 +302,26 @@ public:
     ParticleSpecies pt(nptot_all, mass, zcharge);
     pt.setSpId(0);
 
-    FieldExtCls fd;
+    FieldExtCls fd_ext;
+    FieldCls fd;
     std::cout << "========Init,Test FieldExt========" << std::endl;
-    // fd.field_cls_init(equ);
-    fd.init(equ, particleList);
-    fd.field_ext_cls_test(equ, pt);
+    fd.field_cls_init(equ);
+    fd_ext.init(equ, particleList);
+    fd_ext.field_ext_cls_test(equ, pt);
+    std::vector<double> WWW;
+    WWW.assign(fd_ext.ntor1d.size(), 0.0); //
+    // Create particle object for simulation
+    Particle particle(equ, rank, size);
+
+    fd_ext.field_ext_cls_calc_W(WWW, equ, particle, fd_ext.phik, fd_ext.ntor1d);
+    // Print the calculated WWW
+    std::cout << "Calculated WWW: [";
+    for (size_t i = 0; i < WWW.size(); ++i) {
+      std::cout << WWW[i];
+      if (i != WWW.size() - 1)
+        std::cout << ", ";
+    }
+    std::cout << "]" << std::endl;
 
     // try {
     //     field.readInput("input.ini");
