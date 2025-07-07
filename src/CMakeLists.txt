@@ -28,6 +28,8 @@ add_executable(simulation
     util_io.cpp
     SplineCubicNd.cpp
     SplineCubic2d1f.cpp
+    FieldExt.cpp
+    ParticleExtCls.cpp
 )
 
 # Include headers (including MPI if enabled)

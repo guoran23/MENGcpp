@@ -8,26 +8,29 @@
  * Description:
  * This file is part of MENG++ project.
  */
+#include <chrono>
+#include <fstream>
+#include <iostream>
+#include <mpi.h>
+#include <stdexcept>
 
 #include "Equilibrium.h"
 #include "Field.h"
 #include "FieldExt.h"
+#include "GKEM2D1FCls.h"
 #include "MPIManager.h"
 #include "Particle.h"
 #include "ParticleExtCls.h"
 #include "SplineCubicNd.h"
 #include "util_io.h"
 
-#include <chrono>
-#include <fstream>
-#include <iostream>
-#include <mpi.h>
-#include <stdexcept>
-// #include <petsc.h>
+class TestCls {
+private:
+  MPIManager &mpiManager;
+  int rank, size;
 
-class Simulation {
 public:
-  Simulation(int argc, char **argv)
+  TestCls(int argc, char **argv)
       : mpiManager(MPIManager::getInstance(argc, argv)),
         rank(mpiManager.getRank()), size(mpiManager.getSize()) {}
 
@@ -52,12 +55,12 @@ public:
               << std::endl;
     std::cout << "R(1,0) = " << eq.getR(1.0, 0.0) << std::endl;
 
-    // Create particle object for simulation
+    // Create particle object for test
     Particle particle(eq, rank, size);
 
     double timeStep = 0.1;
     for (int i = 0; i < 10; ++i) {
-      // Simulate particle movement
+      // testulate particle movement
       // particle.move(field, timeStep);
     }
 
@@ -184,7 +187,7 @@ public:
     std::vector<double> xq1d(nqx), yq1d(nqy), zq1d(nqz), fq1d;
     double t0, t1, t2;
 
-    // Initialize the spline (Assume SplineCubicNd has similar methods)
+    // Initialize the spline (Assume SplineCubicNd has testilar methods)
     spc1d.spc_cls_init(isource);
     spc1d.spc_cls_test();
 
@@ -306,12 +309,13 @@ public:
     FieldCls fd;
     std::cout << "========Init,Test FieldExt========" << std::endl;
     fd.field_cls_init(equ);
-    fd_ext.init(equ, particleList);
+    // Create particle object for test
+    Particle particle(equ, rank, size);
+
+    fd_ext.init(equ, particle);
     fd_ext.field_ext_cls_test(equ, pt);
     std::vector<double> WWW;
     WWW.assign(fd_ext.ntor1d.size(), 0.0); //
-    // Create particle object for simulation
-    Particle particle(equ, rank, size);
 
     fd_ext.field_ext_cls_calc_W(WWW, equ, particle, fd_ext.phik, fd_ext.ntor1d);
     // Print the calculated WWW
@@ -332,17 +336,15 @@ public:
 
     return EXIT_SUCCESS; // Return success status
   }
-
-private:
-  MPIManager &mpiManager;
-  int rank, size;
 };
 
 int main(int argc, char **argv) {
-  Simulation sim(argc, argv);
-  // sim.run();
-  sim.testParticle();
-  sim.testSplineNd();
-  sim.testField();
-  return 0;
+  // TestCls test(argc, argv);
+  // test.run();
+  // test.testParticle();
+  // test.testSplineNd();
+  // test.testField();
+  // return 0;
+  GKEM2D1FCls gkem2d1f(argc, argv);
+  gkem2d1f.initialize();
 }

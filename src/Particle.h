@@ -37,10 +37,21 @@ public:
   std::vector<double> partvpar;
   std::vector<double> partw;
   // Constructor
+  ParticleCoords() = default;
   ParticleCoords(int total_particles)
       : nptot(total_particles), partrad(total_particles),
         parttheta(total_particles), partphitor(total_particles),
         partvpar(total_particles), partw(total_particles) {}
+
+  void initialize(int total_particles) {
+    nptot = total_particles;
+    partrad.resize(nptot);
+    parttheta.resize(nptot);
+    partphitor.resize(nptot);
+    partvpar.resize(nptot);
+    partw.resize(nptot);
+    setZero(); // Initialize all coordinates to zero
+  }
 
   void setValue(const std::vector<double> &partrad_input,
                 const std::vector<double> &parttheta_input,
@@ -272,16 +283,18 @@ public:
     return 1.0; // Placeholder
   }
   double getdlnTemdr1d(double radius) const {
-    // Implement function to get the derivative of log temperature with respect to radius
+    // Implement function to get the derivative of log temperature with respect
+    // to radius
     return 0.0; // Placeholder
   }
 
-   double getdens1d(double radius) const {
+  double getdens1d(double radius) const {
     // Implement function to get density
     return 1.0; // Placeholder
   }
   double getdlndensdr1d(double radius) const {
-    // Implement function to get the derivative of log density with respect to radius
+    // Implement function to get the derivative of log density with respect to
+    // radius
     return 0.0; // Placeholder
   }
 
@@ -729,6 +742,11 @@ public:
   //
   // timer_cls timer;
 public:
+  double mass_ion = 1.0; // 背景质量
+  double getIondens1d(double radius) const {
+    // Implement function to get density
+    return 1.0; // Placeholder
+  }
   // getters
   int getNsp() const { return nsp; }
   void readInput(const std::string &filepath, int mpisize) {
