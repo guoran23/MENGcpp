@@ -67,11 +67,11 @@ void FieldExtCls::field_ext_cls_calc_T_oneSpecies(
     ParticleSpecies &species, const std::vector<double> &partrad0,
     const std::vector<double> &parttheta0,
     const std::vector<double> &partphitor0,
-    const std::vector<double> &partvpar0, const std::vector<double> &partmu0,
-    const std::vector<double> &partw0, const std::vector<double> &partfog0,
-    std::vector<double> &draddt, std::vector<double> &dthetadt,
-    std::vector<double> &dphitordt, std::vector<double> &dvpardt,
-    std::vector<double> &dwdt, int icase,
+    const std::vector<double> &partvpar0, const std::vector<double> &partw0,
+    const std::vector<double> &partfog0, const std::vector<double> &draddt,
+    const std::vector<double> &dthetadt, const std::vector<double> &dphitordt,
+    const std::vector<double> &dvpardt, const std::vector<double> &dwdt, 
+    const int icase,
     const std::vector<std::complex<double>> &phik_c,
     const std::vector<int> &ntor1d) {
 
@@ -81,11 +81,10 @@ void FieldExtCls::field_ext_cls_calc_T_oneSpecies(
   TTT.assign(lenntor, zero_c); // Initialize TTT with complex zeros
   int nptot = species.getNptot();
   if (partrad0.size() != nptot || parttheta0.size() != nptot ||
-      partphitor0.size() != nptot || partvpar0.size() != nptot ||
-      partmu0.size() != nptot || partw0.size() != nptot ||
+      partphitor0.size() != nptot || partw0.size() != nptot ||
       partfog0.size() != nptot || draddt.size() != nptot ||
       dthetadt.size() != nptot || dphitordt.size() != nptot ||
-      dvpardt.size() != nptot || dwdt.size() != nptot) {
+      dvpardt.size() != nptot) {
     std::cerr << "Error: Particle data size mismatch." << std::endl;
     return;
   }
@@ -98,10 +97,8 @@ void FieldExtCls::field_ext_cls_calc_T_oneSpecies(
     double ptrad = partrad0[fic];
     double ptthe = parttheta0[fic];
     double ptphi = partphitor0[fic];
-    double ptvpar = partvpar0[fic];
+
     double ptw = partw0[fic];
-    double ptmu = partmu0[fic];
-    double ptfog = partfog0[fic];
     double ptdraddt = draddt[fic];
     double ptdthedt = dthetadt[fic];
     double ptdphidt = dphitordt[fic];

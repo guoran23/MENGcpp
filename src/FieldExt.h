@@ -41,13 +41,11 @@ public:
       ParticleSpecies &species, const std::vector<double> &partrad0,
       const std::vector<double> &parttheta0,
       const std::vector<double> &partphitor0,
-      const std::vector<double> &partvpar0, const std::vector<double> &partmu0,
-      const std::vector<double> &partw0, const std::vector<double> &partfog0,
-      std::vector<double> &draddt, std::vector<double> &dthetadt,
-      std::vector<double> &dphitordt, std::vector<double> &dvpardt,
-      std::vector<double> &dwdt, int icase,
-      const std::vector<std::complex<double>> &phik_c,
+      const std::vector<double> &partvpar0, const std::vector<double> &partw0,
+      const std::vector<double> &partfog0, const std::vector<double> &draddt,
+      const std::vector<double> &dthetadt, const std::vector<double> &dphitordt,
+      const std::vector<double> &dvpardt, const std::vector<double> &dwdt,
+      const int icase, const std::vector<std::complex<double>> &phik_c,
       const std::vector<int> &ntor1d);
 };
 #endif // FIELDEXTCLS_H
-

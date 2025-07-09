@@ -95,6 +95,7 @@ public:
                    partw.begin(),
                    [dt](double y, double x) { return y + dt * x; });
   }
+
   // partcoords = dt * partcoords
   void ax2a(double dt) {
     std::transform(partrad.begin(), partrad.end(), partrad.begin(),
@@ -192,6 +193,10 @@ public:
   int getSpId() const { return sp_id; }
   ParticleCoords &getCoords() { return coords; }
   const ParticleCoords &getCoords() const { return coords; }
+  void setCoords(const ParticleCoords &other) {
+    coords.setValue(other.partrad, other.parttheta, other.partphitor,
+                    other.partvpar, other.partw);
+  }
   double getTem() const { return Tem; }
   double getNsonN() const { return nsonN; }
   double getCp2g() const { return Cp2g; }
@@ -1279,6 +1284,41 @@ public:
       }
       std::cout << std::endl;
       std::cout << "iuseprv=" << iuseprv << std::endl;
+    }
+  }
+
+  void particle_setvalue2sp_from_coords(
+      Particle &pt, const std::vector<ParticleCoords> &xv0) {
+    int nsp_tmp = xv0.size();
+    if (nsp_tmp != pt.getNsp()) {
+      std::cerr << "Error: wrong nsp in particle_setvalue2sp_from_coords"
+                << std::endl;
+    }
+    for (int fsc = 0; fsc < nsp_tmp; ++fsc) {
+      ParticleSpecies &species = pt.group.getSpecies(fsc);
+      species.setCoords(xv0[fsc]);
+    }
+  }
+
+  void particle_coords_cls_axpy2sp(std::vector<ParticleCoords> &dxv_sum,
+                                   const std::vector<ParticleCoords> &dxvdt,
+                                   const double dt) {
+    int nsp_tmp = dxv_sum.size();
+    for (int fsc = 0; fsc < nsp_tmp; ++fsc) {
+      dxv_sum[fsc].axpy(dxvdt[fsc], dt);
+    }
+  }
+
+  void particle_add_coords2sp(Particle &pt,
+                              const std::vector<ParticleCoords> &dxvdt,
+                              const double dt) {
+    int nsp_tmp = dxvdt.size();
+    if (nsp_tmp != pt.getNsp()) {
+      std::cerr << "Error: wrong nsp in particle_add_coords2sp" << std::endl;
+    }
+    for (int fsc = 0; fsc < nsp_tmp; ++fsc) {
+      ParticleSpecies &species = pt.group.getSpecies(fsc);
+      species.particle_add_coords(dxvdt[fsc], dt);
     }
   }
 

@@ -346,5 +346,5 @@ int main(int argc, char **argv) {
   // test.testField();
   // return 0;
   GKEM2D1FCls gkem2d1f(argc, argv);
-  gkem2d1f.initialize();
+  gkem2d1f.test(2);
 }

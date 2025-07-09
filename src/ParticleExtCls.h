@@ -44,6 +44,16 @@ public:
   void particle_ext_cls_init(const Equilibrium &equ,
                              std::optional<int> sp_id = std::nullopt);
   void particle_ext_cls_init(const Equilibrium &equ, int rank, int mpisize_in);
+  //
+  void particle_ext_cls_dxvpardt123EM2d1f_2sp(
+      Equilibrium &equ, FieldCls &fd,
+      const std::vector<std::complex<double>> &phik,
+      const std::vector<std::complex<double>> &apark,
+      const std::vector<int> &ntor1d, const std::vector<ParticleCoords> &xv0,
+      std::vector<std::vector<double>> &partmu0_allsp,
+      std::vector<std::vector<double>> &partfog0_allsp,
+      std::vector<ParticleCoords> &dxvdt);
+
   // ---- Time-stepping (Electromagnetic) ----
   void particle_ext_cls_dxvpardt123EM2d1f(
       int speciesIndex, Equilibrium &equ, FieldCls &fd,
@@ -73,4 +83,3 @@ public:
 };
 
 #endif // PARTICLEEXTCLS_H
-
