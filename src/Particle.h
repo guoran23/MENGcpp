@@ -1434,16 +1434,16 @@ public:
                       partfog[fic];
       }
       // print particle info
-      std::cout << "partrad[" << fic << "]: " << partrad[fic] << std::endl;
-      std::cout << "parttheta[" << fic << "]: " << parttheta[fic] << std::endl;
-      std::cout << "partphitor[" << fic << "]: " << partphitor[fic]
-                << std::endl;
-      std::cout << "partvpar[" << fic << "]: " << partvpar[fic] << std::endl;
-      std::cout << "partmu[" << fic << "]: " << partmu[fic] << std::endl;
-      std::cout << "partfog[" << fic << "]: " << partfog[fic] << std::endl;
-      std::cout << "partg0[" << fic << "]: " << partg0[fic] << std::endl;
-      std::cout << "partw[" << fic << "]: " << partw[fic] << std::endl;
-      std::cout << "---------------------------" << std::endl;
+      // std::cout << "partrad[" << fic << "]: " << partrad[fic] << std::endl;
+      // std::cout << "parttheta[" << fic << "]: " << parttheta[fic] << std::endl;
+      // std::cout << "partphitor[" << fic << "]: " << partphitor[fic]
+      //           << std::endl;
+      // std::cout << "partvpar[" << fic << "]: " << partvpar[fic] << std::endl;
+      // std::cout << "partmu[" << fic << "]: " << partmu[fic] << std::endl;
+      // std::cout << "partfog[" << fic << "]: " << partfog[fic] << std::endl;
+      // std::cout << "partg0[" << fic << "]: " << partg0[fic] << std::endl;
+      // std::cout << "partw[" << fic << "]: " << partw[fic] << std::endl;
+      // std::cout << "---------------------------" << std::endl;
     }
   }
 };

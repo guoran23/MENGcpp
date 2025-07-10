@@ -317,7 +317,7 @@ public:
     std::vector<double> WWW;
     WWW.assign(fd_ext.ntor1d.size(), 0.0); //
 
-    fd_ext.field_ext_cls_calc_W(WWW, equ, particle, fd_ext.phik, fd_ext.ntor1d);
+    fd_ext.field_ext_cls_calc_W(WWW, equ, particle, fd_ext.phik, fd_ext.ntor1d, fd_ext.amplitude_arr);
     // Print the calculated WWW
     std::cout << "Calculated WWW: [";
     for (size_t i = 0; i < WWW.size(); ++i) {
@@ -345,6 +345,7 @@ int main(int argc, char **argv) {
   // test.testSplineNd();
   // test.testField();
   // return 0;
+
   GKEM2D1FCls gkem2d1f(argc, argv);
-  gkem2d1f.test(2);
+  gkem2d1f.test();
 }

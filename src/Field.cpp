@@ -158,6 +158,7 @@ void FieldCls::field_cls_set_parms() {
   }
 
   this->ntotfem2d1f = this->nradfem * this->nthefem * this->lenntor;
+  this->ntot12fem = this->nradfem * this->nthefem;
 
   // Print field information
   if (rank == 0) {
@@ -258,12 +259,13 @@ double FieldCls::field_cls_get_fbuff(double rad,
 // 针对double的重载
 void FieldCls::field_cls_g2p2d1f_general(
     const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
-    const std::vector<int> &ntor1d, const double ptrad1d, const double ptthe1d,
-    const double ptphi1d, double &ptf1d, const std::array<int, 3> &idiff,
-    int ngyro, double rho1) {
+    const std::vector<int> &ntor1d,
+    const std::vector<std::complex<double>> &amp, const double ptrad1d,
+    const double ptthe1d, const double ptphi1d, double &ptf1d,
+    const std::array<int, 3> &idiff, int ngyro, double rho1) {
   std::vector<double> ptf1d_vec;
 
-  field_cls_g2p2d1f_general(equ, f1d, ntor1d, std::vector<double>{ptrad1d},
+  field_cls_g2p2d1f_general(equ, f1d, ntor1d, amp, std::vector<double>{ptrad1d},
                             std::vector<double>{ptthe1d},
                             std::vector<double>{ptphi1d}, ptf1d_vec, idiff,
                             ngyro, std::vector<double>{rho1});
@@ -273,17 +275,28 @@ void FieldCls::field_cls_g2p2d1f_general(
 
 void FieldCls::field_cls_g2p2d1f_general(
     const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
-    const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
-    const std::vector<double> &ptthe1d, const std::vector<double> &ptphi1d,
-    std::vector<double> &ptf1d, const std::array<int, 3> &idiff, int ngyro,
+    const std::vector<int> &ntor1d,
+    const std::vector<std::complex<double>> &amp,
+    const std::vector<double> &ptrad1d, const std::vector<double> &ptthe1d,
+    const std::vector<double> &ptphi1d, std::vector<double> &ptf1d,
+    const std::array<int, 3> &idiff, int ngyro,
     const std::vector<double> &rho1) {
   // timer.tic(3);
 
   size_t np = ptrad1d.size();
   ptf1d.assign(np, 0.0); // Initialize ptf1d to zeros
+  std::vector<std::complex<double>> f1d_amp;
+  f1d_amp.resize(ntotfem2d1f, 0.0);
+  for (int itor = 0; itor < ntor1d.size(); ++itor) {
+    for (int ifem = 0; ifem < ntot12fem; ++ifem) {
+      int idx = ifem + itor * ntot12fem;
+      f1d_amp[idx] = amp[itor] * f1d[idx];
+    }
+  }
 
   if (ngyro <= 1) {
-    spc.spc_cls_sp2p2d1f(f1d, ntor1d, ptrad1d, ptthe1d, ptphi1d, ptf1d, idiff);
+    spc.spc_cls_sp2p2d1f(f1d_amp, ntor1d, ptrad1d, ptthe1d, ptphi1d, ptf1d,
+                         idiff);
   } else {
     std::vector<double> ptf1dgy(np, 0.0), ptrad1dgy(np), ptthe1dgy(np);
     std::vector<double> ptgyangle(np), ptR(np), ptZ(np);
@@ -324,7 +337,7 @@ void FieldCls::field_cls_g2p2d1f_general(
       }
 
       std::vector<double> temp_ptf1dgy(np, 0.0);
-      spc.spc_cls_sp2p2d1f(f1d, ntor1d, ptrad1dgy, ptthe1dgy, ptphi1d,
+      spc.spc_cls_sp2p2d1f(f1d_amp, ntor1d, ptrad1dgy, ptthe1dgy, ptphi1d,
                            temp_ptf1dgy, idiff);
 
       for (size_t i = 0; i < np; ++i) {
@@ -343,13 +356,15 @@ void FieldCls::field_cls_g2p2d1f_general(
 // 针对double的重载
 void FieldCls::field_cls_g2p2d1f_grad(
     const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
-    const std::vector<int> &ntor1d, const double ptrad1d, const double ptthe1d,
-    const double ptphi1d, double &ptf1d100, double &ptf1d010, double &ptf1d001,
-    int ngyro, double rho1) {
+    const std::vector<int> &ntor1d,
+    const std::vector<std::complex<double>> &amplitude_arr,
+    const double ptrad1d, const double ptthe1d, const double ptphi1d,
+    double &ptf1d100, double &ptf1d010, double &ptf1d001, int ngyro,
+    double rho1) {
   std::vector<double> ptf1d100_vec, ptf1d010_vec, ptf1d001_vec;
 
   field_cls_g2p2d1f_grad(
-      equ, f1d, ntor1d, std::vector<double>{ptrad1d},
+      equ, f1d, ntor1d, amplitude_arr, std::vector<double>{ptrad1d},
       std::vector<double>{ptthe1d}, std::vector<double>{ptphi1d}, ptf1d100_vec,
       ptf1d010_vec, ptf1d001_vec, ngyro, std::vector<double>{rho1});
 
@@ -360,10 +375,12 @@ void FieldCls::field_cls_g2p2d1f_grad(
 
 void FieldCls::field_cls_g2p2d1f_grad(
     const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
-    const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
-    const std::vector<double> &ptthe1d, const std::vector<double> &ptphi1d,
-    std::vector<double> &ptf1d100, std::vector<double> &ptf1d010,
-    std::vector<double> &ptf1d001, int ngyro, const std::vector<double> &rho1) {
+    const std::vector<int> &ntor1d,
+    const std::vector<std::complex<double>> &amplitude_arr,
+    const std::vector<double> &ptrad1d, const std::vector<double> &ptthe1d,
+    const std::vector<double> &ptphi1d, std::vector<double> &ptf1d100,
+    std::vector<double> &ptf1d010, std::vector<double> &ptf1d001, int ngyro,
+    const std::vector<double> &rho1) {
   // timer.tic(3);
 
   size_t np = ptrad1d.size();
@@ -372,8 +389,8 @@ void FieldCls::field_cls_g2p2d1f_grad(
   ptf1d001.assign(np, 0.0);
 
   if (ngyro <= 1) {
-    spc.spc_cls_sp2p2d1f_grad(f1d, ntor1d, ptrad1d, ptthe1d, ptphi1d, ptf1d100,
-                              ptf1d010, ptf1d001);
+    spc.spc_cls_sp2p2d1f_grad(f1d, ntor1d, amplitude_arr, ptrad1d, ptthe1d,
+                              ptphi1d, ptf1d100, ptf1d010, ptf1d001);
   } else {
     std::vector<double> ptrad1dgy(np), ptthe1dgy(np);
     std::vector<double> ptgyangle(np), ptR(np), ptZ(np);
@@ -415,9 +432,9 @@ void FieldCls::field_cls_g2p2d1f_grad(
 
       std::vector<double> temp_ptf1dgy100(np, 0.0), temp_ptf1dgy010(np, 0.0),
           temp_ptf1dgy001(np, 0.0);
-      spc.spc_cls_sp2p2d1f_grad(f1d, ntor1d, ptrad1dgy, ptthe1dgy, ptphi1d,
-                                temp_ptf1dgy100, temp_ptf1dgy010,
-                                temp_ptf1dgy001);
+      spc.spc_cls_sp2p2d1f_grad(f1d, ntor1d, amplitude_arr, ptrad1dgy,
+                                ptthe1dgy, ptphi1d, temp_ptf1dgy100,
+                                temp_ptf1dgy010, temp_ptf1dgy001);
 
       for (size_t i = 0; i < np; ++i) {
         ptf1d100[i] += temp_ptf1dgy100[i];
@@ -440,17 +457,16 @@ void FieldCls::field_cls_g2p2d1f_grad(
 // 针对double的重载
 void FieldCls::field_cls_g2p2d1f_grad_complex(
     const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
-    const std::vector<int> &ntor1d, 
-    const double ptrad1d, const double ptthe1d,
-    const double ptphi1d, 
+    const std::vector<int> &ntor1d,
+    const std::vector<std::complex<double>> &amp, const double ptrad1d,
+    const double ptthe1d, const double ptphi1d,
     std::vector<std::complex<double>> &ptf1d100_c,
     std::vector<std::complex<double>> &ptf1d010_c,
-    std::vector<std::complex<double>> &ptf1d001_c,
-    int ngyro, double rho1) {
+    std::vector<std::complex<double>> &ptf1d001_c, int ngyro, double rho1) {
   std::vector<std::complex<double>> ptf1d100_vec, ptf1d010_vec, ptf1d001_vec;
 
   field_cls_g2p2d1f_grad_complex(
-      equ, f1d, ntor1d, std::vector<double>{ptrad1d},
+      equ, f1d, ntor1d, amp, std::vector<double>{ptrad1d},
       std::vector<double>{ptthe1d}, std::vector<double>{ptphi1d}, ptf1d100_vec,
       ptf1d010_vec, ptf1d001_vec, ngyro, std::vector<double>{rho1});
 
@@ -461,8 +477,10 @@ void FieldCls::field_cls_g2p2d1f_grad_complex(
 
 void FieldCls::field_cls_g2p2d1f_grad_complex(
     const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
-    const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
-    const std::vector<double> &ptthe1d, const std::vector<double> &ptphi1d,
+    const std::vector<int> &ntor1d,
+    const std::vector<std::complex<double>> &amp,
+    const std::vector<double> &ptrad1d, const std::vector<double> &ptthe1d,
+    const std::vector<double> &ptphi1d,
     std::vector<std::complex<double>> &ptf1d100_c,
     std::vector<std::complex<double>> &ptf1d010_c,
     std::vector<std::complex<double>> &ptf1d001_c, int ngyro,
@@ -476,8 +494,9 @@ void FieldCls::field_cls_g2p2d1f_grad_complex(
   ptf1d001_c.assign(np, zero_c);
 
   if (ngyro <= 1) {
-    spc.spc_cls_sp2p2d1f_grad_complex(f1d, ntor1d, ptrad1d, ptthe1d, ptphi1d, ptf1d100_c,
-                              ptf1d010_c, ptf1d001_c);
+    spc.spc_cls_sp2p2d1f_grad_complex(f1d, ntor1d, amp, ptrad1d, ptthe1d,
+                                      ptphi1d, ptf1d100_c, ptf1d010_c,
+                                      ptf1d001_c);
   } else {
     std::vector<double> ptrad1dgy(np), ptthe1dgy(np);
     std::vector<double> ptgyangle(np), ptR(np), ptZ(np);
@@ -517,11 +536,11 @@ void FieldCls::field_cls_g2p2d1f_grad_complex(
         ptthe1dgy[i] = equ.gettheRZ(Rtmp, Ztmp);
       }
 
-      std::vector<std::complex<double>> temp_ptf1dgy100(np, zero_c), temp_ptf1dgy010(np, zero_c),
-          temp_ptf1dgy001(np, zero_c);
-      spc.spc_cls_sp2p2d1f_grad_complex(f1d, ntor1d, ptrad1dgy, ptthe1dgy, ptphi1d,
-                                temp_ptf1dgy100, temp_ptf1dgy010,
-                                temp_ptf1dgy001);
+      std::vector<std::complex<double>> temp_ptf1dgy100(np, zero_c),
+          temp_ptf1dgy010(np, zero_c), temp_ptf1dgy001(np, zero_c);
+      spc.spc_cls_sp2p2d1f_grad_complex(f1d, ntor1d, amp, ptrad1dgy, ptthe1dgy,
+                                        ptphi1d, temp_ptf1dgy100,
+                                        temp_ptf1dgy010, temp_ptf1dgy001);
 
       for (size_t i = 0; i < np; ++i) {
         ptf1d100_c[i] += temp_ptf1dgy100[i];

@@ -63,6 +63,7 @@ public:
   int nradfem, nthefem, nphifem;
   int ntotfem, ntotdof;
   int ntotfem2d1f;
+  int ntot12fem;
 
   // Filter
   int ifilter = 1, filter_m0 = -5, filter_m1 = -2, filter_nc = 2;
@@ -104,33 +105,42 @@ public:
   void field_cls_link2eq(const Equilibrium &equ);
   void field_cls_g2p2d1f_general(
       const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
-      const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
+      const std::vector<int> &ntor1d, 
+      const std::vector<std::complex<double>> &amplitude_arr,
+      const std::vector<double> &ptrad1d,
       const std::vector<double> &ptthe1d, const std::vector<double> &ptphi1d,
       std::vector<double> &ptf1d, const std::array<int, 3> &idiff, int ngyro,
       const std::vector<double> &rho1);
   void field_cls_g2p2d1f_general(
     const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
-    const std::vector<int> &ntor1d, const double ptrad1d, const double ptthe1d,
+    const std::vector<int> &ntor1d, 
+    const std::vector<std::complex<double>> &amplitude_arr,
+    const double ptrad1d, const double ptthe1d,
     const double ptphi1d, double &ptf1d, const std::array<int, 3> &idiff,
     int ngyro, double rho1);
 
   void field_cls_g2p2d1f_grad(const Equilibrium &equ,
                               const std::vector<std::complex<double>> &f1d,
                               const std::vector<int> &ntor1d,
+                              const std::vector<std::complex<double>> &amplitude_arr,
                               const double ptrad1d, const double ptthe1d,
                               const double ptphi1d, double &ptf1d100,
                               double &ptf1d010, double &ptf1d001, int ngyro,
                               double rho1);
   void field_cls_g2p2d1f_grad(
       const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
-      const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
+      const std::vector<int> &ntor1d, 
+      const std::vector<std::complex<double>> &amplitude_arr,
+      const std::vector<double> &ptrad1d,
       const std::vector<double> &ptthe1d, const std::vector<double> &ptphi1d,
       std::vector<double> &ptf1d100, std::vector<double> &ptf1d010,
       std::vector<double> &ptf1d001, int ngyro,
       const std::vector<double> &rho1);
   void field_cls_g2p2d1f_grad_complex(
     const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
-    const std::vector<int> &ntor1d, const std::vector<double> &ptrad1d,
+    const std::vector<int> &ntor1d, 
+    const std::vector<std::complex<double>> &amplitude_arr,
+    const std::vector<double> &ptrad1d,
     const std::vector<double> &ptthe1d, const std::vector<double> &ptphi1d,
     std::vector<std::complex<double>> &ptf1d100_c,
     std::vector<std::complex<double>> &ptf1d010_c,
@@ -139,6 +149,7 @@ public:
    void field_cls_g2p2d1f_grad_complex(
     const Equilibrium &equ, const std::vector<std::complex<double>> &f1d,
     const std::vector<int> &ntor1d, 
+    const std::vector<std::complex<double>> &amplitude_arr,
     const double ptrad1d, const double ptthe1d,
     const double ptphi1d, 
     std::vector<std::complex<double>> &ptf1d100_c,

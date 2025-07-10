@@ -174,6 +174,7 @@ public:
   // calculate gradient of f1d
   void spc_cls_sp2p2d1f_grad(const std::vector<std::complex<double>> &f1d,
                              const std::vector<int> &ntor1d,
+                             const std::vector<std::complex<double>> &amp,
                              const std::vector<double> &prad1d,
                              const std::vector<double> &pthe1d,
                              const std::vector<double> &pphi1d,
@@ -201,7 +202,7 @@ public:
     std::vector<std::complex<double>> dfdthe_c(np * lenntor, zero_c);
     std::vector<std::complex<double>> dfdphi_c(np * lenntor, zero_c);
     // calculate the complex gradient
-    spc_cls_sp2p2d1f_grad_complex(f1d, ntor1d, prad1d, pthe1d, pphi1d, dfdrad_c,
+    spc_cls_sp2p2d1f_grad_complex(f1d, ntor1d, amp, prad1d, pthe1d, pphi1d, dfdrad_c,
                                   dfdthe_c, dfdphi_c);
     // calculate the real gradient
     for (int itor = 0; itor < lenntor; ++itor) {
@@ -216,9 +217,10 @@ public:
   // calculate the gradient of f1d complex
   // size of f1d should be ntot12fem * lenntor
   // size of pdfdrad1d_c, pdfdthe1d_c, pdfdphi1d_c should be np*lenntor
-  void spc_cls_sp2p2d1f_grad_complex(
-      const std::vector<std::complex<double>> &f1d,
-      const std::vector<int> &ntor1d, const std::vector<double> &prad1d,
+  void spc_cls_sp2p2d1f_grad_complex(const std::vector<std::complex<double>> &f1d,
+      const std::vector<int> &ntor1d, 
+      const std::vector<std::complex<double>> &amp,
+      const std::vector<double> &prad1d,
       const std::vector<double> &pthe1d, const std::vector<double> &pphi1d,
       std::vector<std::complex<double>> &pdfdrad1d_c,
       std::vector<std::complex<double>> &pdfdthe1d_c,
@@ -292,9 +294,9 @@ public:
             fNphi0_c16 * std::complex<double>(0.0, ntor1d[itor]);
 
         int fpc_idx = fpc + itor * np;
-        pdfdrad1d_c[fpc_idx] += (pfradthe_c16[0] * fNphi0_c16);
-        pdfdthe1d_c[fpc_idx] += (pfradthe_c16[1] * fNphi0_c16);
-        pdfdphi1d_c[fpc_idx] += (pfradthe_c16[2] * fNphi1_c16);
+        pdfdrad1d_c[fpc_idx] += amp[itor]*(pfradthe_c16[0] * fNphi0_c16);
+        pdfdthe1d_c[fpc_idx] += amp[itor]*(pfradthe_c16[1] * fNphi0_c16);
+        pdfdphi1d_c[fpc_idx] += amp[itor]*(pfradthe_c16[2] * fNphi1_c16);
       } // fpc
     }   // itor
 

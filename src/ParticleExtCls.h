@@ -49,7 +49,9 @@ public:
       Equilibrium &equ, FieldCls &fd,
       const std::vector<std::complex<double>> &phik,
       const std::vector<std::complex<double>> &apark,
-      const std::vector<int> &ntor1d, const std::vector<ParticleCoords> &xv0,
+      const std::vector<int> &ntor1d, 
+      const std::vector<std::complex<double>> &amp,
+      const std::vector<ParticleCoords> &xv0,
       std::vector<std::vector<double>> &partmu0_allsp,
       std::vector<std::vector<double>> &partfog0_allsp,
       std::vector<ParticleCoords> &dxvdt);
@@ -59,7 +61,9 @@ public:
       int speciesIndex, Equilibrium &equ, FieldCls &fd,
       const std::vector<std::complex<double>> &phik,
       const std::vector<std::complex<double>> &apark,
-      const std::vector<int> &ntor1d, const std::vector<double> &partrad0,
+      const std::vector<int> &ntor1d, 
+      const std::vector<std::complex<double>> &amp,
+      const std::vector<double> &partrad0,
       const std::vector<double> &parttheta0,
       const std::vector<double> &partphitor0,
       const std::vector<double> &partvpar0, const std::vector<double> &partmu0,
@@ -79,7 +83,8 @@ public:
       std::vector<double> &dwdt, int icase,
       const std::vector<std::complex<double>> &phik,
       const std::vector<std::complex<double>> &apark,
-      const std::vector<int> &ntor1d);
+      const std::vector<int> &ntor1d,
+    const std::vector<std::complex<double>> &amp);
 };
 
 #endif // PARTICLEEXTCLS_H

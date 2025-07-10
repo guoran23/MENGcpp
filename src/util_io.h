@@ -19,6 +19,9 @@
 #include <iomanip>
 
 #include <array>
+#include <sstream>
+#include <algorithm>
+#include <iostream>
 
 template <typename T, std::size_t N>
 void print_vector(const std::string& name, const std::array<T, N>& arr) {
@@ -39,6 +42,8 @@ void print_vector(const std::string& name, const std::vector<T>& vec) {
     }
     std::cout << "]\n";
 }
+
+std::vector<double> parseArray(const std::string& input); 
 
 class UtilIO {
 public:

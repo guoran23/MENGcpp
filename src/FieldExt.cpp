@@ -2,7 +2,8 @@
 void FieldExtCls::field_ext_cls_calc_W(
     std::vector<double> &WWW, const Equilibrium &equ, Particle &pt,
     const std::vector<std::complex<double>> &phik_c,
-    const std::vector<int> &ntor1d) {
+    const std::vector<int> &ntor1d,
+    const std::vector<std::complex<double>> &amp) {
   int nsp = pt.getNsp();
   int nrad = this->nrad;
   int nthe = this->nthe;
@@ -34,8 +35,9 @@ void FieldExtCls::field_ext_cls_calc_W(
       double jaco3 = ptjaco2 * ptRR;
 
       std::vector<std::complex<double>> dfdrad_c, dfdthe_c, dfdphi_c;
-      field_cls_g2p2d1f_grad_complex(equ, phik_c, ntor1d, ptrad, ptthe, ptphi,
-                                     dfdrad_c, dfdthe_c, dfdphi_c, 1, 0.0);
+      field_cls_g2p2d1f_grad_complex(equ, phik_c, ntor1d, amp, ptrad, ptthe,
+                                     ptphi, dfdrad_c, dfdthe_c, dfdphi_c, 1,
+                                     0.0);
 
       double dens_rad = pt.getIondens1d(ptrad);
       double ptB2 = ptB * ptB;
@@ -70,10 +72,10 @@ void FieldExtCls::field_ext_cls_calc_T_oneSpecies(
     const std::vector<double> &partvpar0, const std::vector<double> &partw0,
     const std::vector<double> &partfog0, const std::vector<double> &draddt,
     const std::vector<double> &dthetadt, const std::vector<double> &dphitordt,
-    const std::vector<double> &dvpardt, const std::vector<double> &dwdt, 
-    const int icase,
-    const std::vector<std::complex<double>> &phik_c,
-    const std::vector<int> &ntor1d) {
+    const std::vector<double> &dvpardt, const std::vector<double> &dwdt,
+    const int icase, const std::vector<std::complex<double>> &phik_c,
+    const std::vector<int> &ntor1d,
+    const std::vector<std::complex<double>> &amp) {
 
   int lenntor = ntor1d.size();
 
@@ -89,7 +91,6 @@ void FieldExtCls::field_ext_cls_calc_T_oneSpecies(
     return;
   }
 
-  int nptot_all = species.getNptotAll();
   double zcharge = species.getCharge();
   double Cp2g = species.getCp2g();
   // Particle loop for deposition
@@ -97,15 +98,15 @@ void FieldExtCls::field_ext_cls_calc_T_oneSpecies(
     double ptrad = partrad0[fic];
     double ptthe = parttheta0[fic];
     double ptphi = partphitor0[fic];
-
     double ptw = partw0[fic];
+
     double ptdraddt = draddt[fic];
     double ptdthedt = dthetadt[fic];
     double ptdphidt = dphitordt[fic];
 
     std::vector<std::complex<double>> dfdrad_c, dfdthe_c, dfdphi_c;
-    field_cls_g2p2d1f_grad_complex(equ, phik_c, ntor1d, ptrad, ptthe, ptphi,
-                                   dfdrad_c, dfdthe_c, dfdphi_c, 1, 0.0);
+    field_cls_g2p2d1f_grad_complex(equ, phik_c, ntor1d, amp, ptrad, ptthe,
+                                   ptphi, dfdrad_c, dfdthe_c, dfdphi_c, 1, 0.0);
 
     for (int itor = 0; itor < lenntor; ++itor) {
       // Calculate the perturbation term
@@ -164,6 +165,8 @@ void FieldExtCls::init(const Equilibrium &equ, Particle &pt) {
   }
   // Initialize Ana Gauss perturbation fields
   initializePerturbations(equ);
+  this->amplitude_arr.resize(this->lenntor);
+  this->amplitude_arr.assign(this->lenntor, 1.0); // Default amplitude
 }
 
 void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
@@ -182,10 +185,36 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
   }
   // 直接在函数中定义并初始化
   std::vector<double> rc1_arr(this->lenntor, 0.5);
-  std::vector<double> amp_arr(this->lenntor, 0.1);
+  // std::vector<double> amp_arr(this->lenntor, 0.1); // eigenmode amplitude
   std::vector<double> rwidth_arr(this->lenntor, 0.1);
-  std::vector<double> omega_arr(this->lenntor, 1.0); // real frequency
+  // std::vector<double> omega_arr(this->lenntor, 1.0); // real frequency
   std::vector<int> mpoloidal_arr(this->lenntor);
+  // read perturbation parameters from input file
+  INIReader reader("input.ini");
+
+  if (reader.ParseError() != 0) {
+    std::cerr << "Can't load 'input.ini'\n";
+  }
+
+  std::string omega0_str = reader.Get("Perturbation", "omega", "");
+  std::string amp_str = reader.Get("Perturbation", "amplitude", "");
+  std::vector<double> omega_arr = parseArray(omega0_str);
+  std::vector<double> amp_arr = parseArray(amp_str);
+
+  std::cout << "Omega0 values:\n";
+  for (double v : omega_arr) {
+    std::cout << "  " << v << "\n";
+  }
+  std::cout << "Amplitude values:\n";
+  for (double v : amp_arr) {
+    std::cout << "  " << v << "\n";
+  }
+  // 检查 omega_arr 和 amp_arr 的大小是否与 lenntor 匹配
+  if (omega_arr.size() != this->lenntor || amp_arr.size() != this->lenntor) {
+    std::cerr << "Error: omega_arr and amp_arr must have the same size as lenntor.\n";
+    return;
+  }
+  //
 
   for (int i = 0; i < this->lenntor; ++i) {
     mpoloidal_arr[i] = 2 + i; // 例如：每个 toroidal mode 不同的 poloidal 模数
@@ -203,7 +232,7 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
   // give a MHD perturbation delta A_//=i/omega* \partial_// delta Phi
   for (int itor = 0; itor < this->lenntor; ++itor) {
     double rc1 = rc1_arr[itor];
-    double amp = amp_arr[itor];
+    double amp_n = amp_arr[itor];
     double rwidth = rwidth_arr[itor];
     int mpoloidal = mpoloidal_arr[itor];
     double omega = omega_arr[itor];
@@ -222,7 +251,7 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
           radial_part = 0.0; // 边界条件
         } else {
           r = radmin + (i - 1) * drad;
-          radial_part = amp * std::exp(-std::pow((r - rc1) / rwidth, 2));
+          radial_part = amp_n * std::exp(-std::pow((r - rc1) / rwidth, 2));
         }
 
         // 角向复数部分
@@ -269,6 +298,8 @@ void FieldExtCls::field_ext_cls_test(const Equilibrium &equ,
                                      ParticleSpecies &pt) {
   // Constants
   int igradient = 1;
+  // initial amplitude
+  std::vector<std::complex<double>> amp(this->lenntor, 1.0);
 
   // Read Fortran-like input.field
   if (rank == 0)
@@ -299,21 +330,21 @@ void FieldExtCls::field_ext_cls_test(const Equilibrium &equ,
 
           // std::cout << "ptrad=" << ptrad[0] << ", ptthe=" << ptthe[0]
           // << ", ptphi=" << ptphi[0] << '\n';
-          field_cls_g2p2d1f_general(equ, phik, ntor1d, ptrad, ptthe, ptphi, ff,
-                                    std::array<int, 3>{0, 0, 0}, 1, prho);
+          field_cls_g2p2d1f_general(equ, phik, ntor1d, amp, ptrad, ptthe, ptphi,
+                                    ff, std::array<int, 3>{0, 0, 0}, 1, prho);
 
           if (igradient == 0) {
-            field_cls_g2p2d1f_general(equ, phik, ntor1d, ptrad, ptthe, ptphi,
-                                      dfdrad, std::array<int, 3>{1, 0, 0}, 1,
-                                      prho);
-            field_cls_g2p2d1f_general(equ, phik, ntor1d, ptrad, ptthe, ptphi,
-                                      dfdthe, std::array<int, 3>{0, 1, 0}, 1,
-                                      prho);
-            field_cls_g2p2d1f_general(equ, phik, ntor1d, ptrad, ptthe, ptphi,
-                                      dfdphi, std::array<int, 3>{0, 0, 1}, 1,
-                                      prho);
+            field_cls_g2p2d1f_general(equ, phik, ntor1d, amp, ptrad, ptthe,
+                                      ptphi, dfdrad,
+                                      std::array<int, 3>{1, 0, 0}, 1, prho);
+            field_cls_g2p2d1f_general(equ, phik, ntor1d, amp, ptrad, ptthe,
+                                      ptphi, dfdthe,
+                                      std::array<int, 3>{0, 1, 0}, 1, prho);
+            field_cls_g2p2d1f_general(equ, phik, ntor1d, amp, ptrad, ptthe,
+                                      ptphi, dfdphi,
+                                      std::array<int, 3>{0, 0, 1}, 1, prho);
           } else if (igradient == 1) {
-            field_cls_g2p2d1f_grad(equ, phik, ntor1d, ptrad, ptthe, ptphi,
+            field_cls_g2p2d1f_grad(equ, phik, ntor1d, amp, ptrad, ptthe, ptphi,
                                    dfdrad, dfdthe, dfdphi, 1, prho);
           }
 
@@ -344,12 +375,12 @@ void FieldExtCls::field_ext_cls_test(const Equilibrium &equ,
 
     std::vector<double> ptf1d; // Output vector to be filled
 
-    field_cls_g2p2d1f_general(equ, phik, ntor1d, ptrad, ptthe, ptphi, ptf1d,
-                              std::array<int, 3>{0, 0, 0}, 1, prho1d);
+    field_cls_g2p2d1f_general(equ, phik, ntor1d, amp, ptrad, ptthe, ptphi,
+                              ptf1d, std::array<int, 3>{0, 0, 0}, 1, prho1d);
     std::vector<double> dfdrad1d, dfdthe1d,
         dfdphi1d; // Gradients output vectors
-    field_cls_g2p2d1f_grad(equ, phik, ntor1d, ptrad, ptthe, ptphi, dfdrad1d,
-                           dfdthe1d, dfdphi1d, 1, prho1d);
+    field_cls_g2p2d1f_grad(equ, phik, ntor1d, amp, ptrad, ptthe, ptphi,
+                           dfdrad1d, dfdthe1d, dfdphi1d, 1, prho1d);
 
     // (1) open the file – overwrite each run;
     std::ofstream fout("data_phik2particle.txt",

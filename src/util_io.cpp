@@ -11,6 +11,21 @@
 
 #include "util_io.h"
 
+std::vector<double> parseArray(const std::string& input) {
+    std::vector<double> result;
+    std::stringstream ss(input);
+    std::string token;
+    while (std::getline(ss, token, ',')) {
+        token.erase(std::remove_if(token.begin(), token.end(), ::isspace), token.end());
+        try {
+            result.push_back(std::stod(token));
+        } catch (...) {
+            std::cerr << "Invalid number in array: " << token << "\n";
+        }
+    }
+    return result;
+}
+
 void UtilIO::write_arr1d_r8(const std::vector<double>& arr1d, 
                             const std::string& sfile, 
                             bool nl_showinfo) {
