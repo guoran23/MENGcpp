@@ -23,6 +23,7 @@ public:
   std::vector<std::complex<double>> denskMkj, phik, jparkMkj, apark;
   std::vector<std::complex<double>>
       amplitude_arr; // Amplitude array for perturbations
+  std::vector<double> omega0;
   // int imixvar = 0; //0, no mixvar, 1 mixing variable
 
   // Constructor & Destructor
@@ -60,7 +61,7 @@ public:
     double Etot_phi = 0.0;
 
     for (int fic = 0; fic <= ntotfem2d1f; ++fic) {
-     Etot_phi -= std::real(phik[fic] * denskMkj[fic]);
+      Etot_phi -= std::real(phik[fic] * denskMkj[fic]);
     }
 
     if (rank == 0) {

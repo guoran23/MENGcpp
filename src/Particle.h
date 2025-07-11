@@ -146,7 +146,7 @@ private:
 
   int ngyro = 1; // number of gyros per particle, default is 1
   int ischeme_motion;
-  int v_par0 = 1, v_d = 0, v_mirror = 0, v_ExB = 0, v_Epar = 1, idwdt = 1;
+  int v_par0 = 1, v_d = 1, v_mirror = 1, v_ExB = 1, v_Epar = 1, idwdt = 1;
 
 protected:
   int rank = 0;
@@ -685,7 +685,7 @@ public:
   ParticleGroup group;
 
   int ischeme_motion, irandom_gy;
-  int v_par0 = 1, v_d = 0, v_mirror = 0, v_ExB = 0, v_Epar = 1, idwdt = 1;
+  int v_par0 = 1, v_d = 1, v_mirror = 1, v_ExB = 1, v_Epar = 1, idwdt = 1;
   int imixvar = 1;
   int ibc_particle = 0, iset_zerosumw;
   bool irestart = false;

@@ -159,6 +159,8 @@ public:
       if (rank == 0)
         std::cout << "========TEST Particle Class with field========"
                   << std::endl;
+      std::cout << "========Only test whether it can compile and run.========"
+                << std::endl;
       std::cout << "========Init,Test FieldExt========" << std::endl;
       pt_ext.particle_ext_cls_test(equ, fd, irk, nrun, dt_o_Ttr, iset_track);
     }
@@ -317,7 +319,8 @@ public:
     std::vector<double> WWW;
     WWW.assign(fd_ext.ntor1d.size(), 0.0); //
 
-    fd_ext.field_ext_cls_calc_W(WWW, equ, particle, fd_ext.phik, fd_ext.ntor1d, fd_ext.amplitude_arr);
+    fd_ext.field_ext_cls_calc_W(WWW, equ, particle, fd_ext.phik, fd_ext.ntor1d,
+                                fd_ext.amplitude_arr);
     // Print the calculated WWW
     std::cout << "Calculated WWW: [";
     for (size_t i = 0; i < WWW.size(); ++i) {
@@ -347,5 +350,6 @@ int main(int argc, char **argv) {
   // return 0;
 
   GKEM2D1FCls gkem2d1f(argc, argv);
-  gkem2d1f.test();
+  gkem2d1f.testParticle();
+  // gkem2d1f.test();
 }

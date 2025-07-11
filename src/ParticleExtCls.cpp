@@ -4,7 +4,7 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f_2sp(
     Equilibrium &equ, FieldCls &fd,
     const std::vector<std::complex<double>> &phik,
     const std::vector<std::complex<double>> &apark,
-    const std::vector<int> &ntor1d, 
+    const std::vector<int> &ntor1d,
     const std::vector<std::complex<double>> &amp,
     const std::vector<ParticleCoords> &xv0,
     std::vector<std::vector<double>> &partmu0_allsp,
@@ -23,25 +23,21 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f_2sp(
 
   for (int fsc = 0; fsc < getNsp(); ++fsc) {
 
-    particle_ext_cls_dxvpardt123EM2d1f(fsc,
-        equ, fd, phik, apark, fd.ntor1d, 
-        amp,
-        xv0[fsc].partrad, xv0[fsc].parttheta,
-        xv0[fsc].partphitor, xv0[fsc].partvpar, partmu0_allsp[fsc],
-        xv0[fsc].partw, partfog0_allsp[fsc], 
-        dxvdt[fsc].partrad,
-        dxvdt[fsc].parttheta, dxvdt[fsc].partphitor, dxvdt[fsc].partvpar,
-        dxvdt[fsc].partw);
+    particle_ext_cls_dxvpardt123EM2d1f(
+        fsc, equ, fd, phik, apark, fd.ntor1d, amp, xv0[fsc].partrad,
+        xv0[fsc].parttheta, xv0[fsc].partphitor, xv0[fsc].partvpar,
+        partmu0_allsp[fsc], xv0[fsc].partw, partfog0_allsp[fsc],
+        dxvdt[fsc].partrad, dxvdt[fsc].parttheta, dxvdt[fsc].partphitor,
+        dxvdt[fsc].partvpar, dxvdt[fsc].partw);
   }
 }
 void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f(
     int speciesIndex, Equilibrium &equ, FieldCls &fd,
     const std::vector<std::complex<double>> &phik,
     const std::vector<std::complex<double>> &apark,
-    const std::vector<int> &ntor1d, 
+    const std::vector<int> &ntor1d,
     const std::vector<std::complex<double>> &amp,
-    const std::vector<double> &partrad0,
-    const std::vector<double> &parttheta0,
+    const std::vector<double> &partrad0, const std::vector<double> &parttheta0,
     const std::vector<double> &partphitor0,
     const std::vector<double> &partvpar0, const std::vector<double> &partmu0,
     const std::vector<double> &partw0, const std::vector<double> &partfog0,
@@ -68,7 +64,7 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     const std::vector<std::complex<double>> &phik_c,
     const std::vector<std::complex<double>> &apark_c,
     const std::vector<int> &ntor1d,
-  const std::vector<std::complex<double>> &amp) {
+    const std::vector<std::complex<double>> &amp) {
   // Precompute constant values
   ParticleSpecies &species = group.getSpecies(speciesIndex);
   const double rhoN = equ.rhoN;
@@ -134,8 +130,8 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       {
         // A for v pullback
         fd.field_cls_g2p2d1f_general(
-            equ, apark_c, ntor1d, amp, partrad0, parttheta0, partphitor0, pt1dAorAh,
-            std::array<int, 3>{0, 0, 1}, ngyro, rho1arr);
+            equ, apark_c, ntor1d, amp, partrad0, parttheta0, partphitor0,
+            pt1dAorAh, std::array<int, 3>{0, 0, 1}, ngyro, rho1arr);
 
         // Ah梯度无需求
         std::fill(pt1ddAhdrad.begin(), pt1ddAhdrad.end(), 0.0);
@@ -190,13 +186,16 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       ptdAdphi = pt1ddAdphi[fic];
     }
 
-    fd.field_cls_g2p2d1f_grad(equ, apark_c, ntor1d, amp, ptrad, pttheta, ptphitor,
-                              ptdAdrad, ptdAdthe, ptdAdphi, ngyro, rho1);
+    fd.field_cls_g2p2d1f_grad(equ, apark_c, ntor1d, amp, ptrad, pttheta,
+                              ptphitor, ptdAdrad, ptdAdthe, ptdAdphi, ngyro,
+                              rho1);
 
     // Placeholder curlB, Bstar, etc.
     double bstar_rad_ct = 0.0, bstar_the_ct = 0.0, bstar_phi_ct = 0.0,
            bstarAs_rad_ct = 0.0, bstarAs_the_ct = 0.0, bstarAs_phi_ct = 0.0,
            bstar1_rad_ct = 0.0, bstar1_the_ct = 0.0, bstar1_phi_ct = 0.0;
+    double bstar_minus_b_rad_ct = 0.0, bstar_minus_b_the_ct = 0.0,
+           bstar_minus_b_phi_ct = 0.0;
     double BBstar_abs = 0.0;
 
     if (ischeme_motion == 1) {
@@ -236,18 +235,19 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
                  ptBphi_co * bstar1_phi_ct) /
                     ptB;
 
-      // ${\boldsymbol b}^*_0={\boldsymbol b}+(m_s/q_s)u_\|\nabla\times{\boldsymbol b}/B_\|^*$
-      bstar_rad_ct = bstar1_rad_ct;
+      // ${\boldsymbol b}^*_0={\boldsymbol
+      // b}+(m_s/q_s)u_\|\nabla\times{\boldsymbol b}/B_\|^*$
+      bstar_rad_ct = +bstar1_rad_ct;
       bstar_the_ct = ptBthe_ct + bstar1_the_ct;
       bstar_phi_ct = ptBphi_ct + bstar1_phi_ct;
 
-      //总的b* = b^*_0 + As修正项
-      bstarAs_rad_ct = bstar_rad_ct +
-                       JB_inv * (ptdAdphi * ptBthe_co - ptdAdthe * ptBphi_co);
-      bstarAs_the_ct = bstar_the_ct +
-                       JB_inv * (ptdAdrad * ptBphi_co - ptdAdphi * ptBrad_co);
-      bstarAs_phi_ct = bstar_phi_ct +
-                       JB_inv * (ptdAdthe * ptBrad_co - ptdAdrad * ptBthe_co);
+      // bstarAs, 总的b* = b^*_0 + As修正项
+      bstarAs_rad_ct =
+          bstar_rad_ct + JB_inv * (ptdAdphi * ptBthe_co - ptdAdthe * ptBphi_co);
+      bstarAs_the_ct =
+          bstar_the_ct + JB_inv * (ptdAdrad * ptBphi_co - ptdAdphi * ptBrad_co);
+      bstarAs_phi_ct =
+          bstar_phi_ct + JB_inv * (ptdAdthe * ptBrad_co - ptdAdrad * ptBthe_co);
 
       // 对bstar进行归一化
       bstar_rad_ct = bstar_rad_ct / BBstar_abs;
@@ -259,17 +259,22 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       bstarAs_the_ct = bstarAs_the_ct / BBstar_abs;
       bstarAs_phi_ct = bstarAs_phi_ct / BBstar_abs;
 
-      // 计算bstar1 = (Bstar+As) - Bstar
+      // 计算bstar1 = bstarAs - bstar, 是指
+      // bstar1 = $+\nabla\langle\delta A_\|^{\rm s}\rangle\times{\boldsymbol
+      // b}/B_\|^*$
       bstar1_rad_ct = bstarAs_rad_ct - bstar_rad_ct;
       bstar1_the_ct = bstarAs_the_ct - bstar_the_ct;
       bstar1_phi_ct = bstarAs_phi_ct - bstar_phi_ct;
-      //bstarAs 包含 As项，总的b*
-      
+      // bstarAs 包含 As项，是总的b*
+      bstar_minus_b_rad_ct = bstarAs_rad_ct;
+      bstar_minus_b_the_ct = bstarAs_the_ct - ptBthe_ct / ptB;
+      bstar_minus_b_phi_ct = bstarAs_phi_ct - ptBphi_ct / ptB;
     }
 
     //// === 调用场（field）插值 ===
-    fd.field_cls_g2p2d1f_general(equ, apark_c, ntor1d, amp, ptrad, pttheta, ptphitor,
-                                 ptA, std::array<int, 3>{0, 0, 0}, ngyro, rho1);
+    fd.field_cls_g2p2d1f_general(equ, apark_c, ntor1d, amp, ptrad, pttheta,
+                                 ptphitor, ptA, std::array<int, 3>{0, 0, 0},
+                                 ngyro, rho1);
 
     // ptvparph = ptvpar-zcharge/mass*ptAh;
     double ptvparph = ptvpar; // Ah=0, only As
@@ -282,7 +287,7 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     double ptvpar0_dthedt = ptvpar * bstar_the_ct;
     double ptvpar0_dphidt = ptvpar * bstar_phi_ct;
 
-    if (species.getvPar0() != 0.0) {
+    if (species.getvPar0() != 0) {
       draddt[fic] += ptvpar0_draddt;
       dthetadt[fic] += ptvpar0_dthedt;
       dphitordt[fic] += ptvpar0_dphidt;
@@ -335,8 +340,9 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       // pttmp = pt1dtmp[fic];  //
     } else {
 
-      fd.field_cls_g2p2d1f_grad(equ, phik_c, ntor1d, amp, ptrad, pttheta, ptphitor,
-                                ptdPdrad, ptdPdthe, ptdPdphi, ngyro, rho1);
+      fd.field_cls_g2p2d1f_grad(equ, phik_c, ntor1d, amp, ptrad, pttheta,
+                                ptphitor, ptdPdrad, ptdPdthe, ptdPdphi, ngyro,
+                                rho1);
     }
 
     double ptdPdpar = (ptBthe_ct * ptdPdthe + ptBphi_ct * ptdPdphi) / ptB;
@@ -359,9 +365,9 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       dphitordt[fic] = dphitordt[fic] + ptEB_dphidt;
     }
     // ====Part 3: dv||/dt
-    double ptdvpardt1 =
-        -ffac * (bstarAs_rad_ct * ptdPAdrad + bstarAs_the_ct * ptdPAdthe +
-                 bstarAs_phi_ct * ptdPAdphi);
+    double ptdvpardt1 = -ffac * (bstar_minus_b_rad_ct * ptdPdrad +
+                                 bstar_minus_b_the_ct * ptdPdthe +
+                                 bstar_minus_b_phi_ct * ptdPdphi);
     // ! As term in dvpar1/dt
     double ptCvpar = -rhotN * Bref * ptmu / (ptB * BBstar_abs * ptjaco3);
     ptdvpardt1 = ptdvpardt1 + ptCvpar * (ptBphi_ct * ptdBdthe * ptdAdrad -
@@ -455,7 +461,6 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       }
     }
   } // End of particle loop
-  
 }
 
 void ParticleExtCls::particle_ext_cls_test(Equilibrium &equ, FieldCls &fd,
@@ -508,10 +513,8 @@ void ParticleExtCls::particle_ext_cls_test(Equilibrium &equ, FieldCls &fd,
     //   Only test field can be used by particle
 
     this->particle_ext_cls_dxvpardt123EM2d1f(
-        i, equ, fd, fk1, fk2, fd.ntor1d, 
-        amp_test,
-        partrad, parttheta, partphitor,
-        partvpar, partmu, partw, partfog, dxvdt.partrad, dxvdt.parttheta,
-        dxvdt.partphitor, dxvdt.partvpar, dxvdt.partw);
+        i, equ, fd, fk1, fk2, fd.ntor1d, amp_test, partrad, parttheta,
+        partphitor, partvpar, partmu, partw, partfog, dxvdt.partrad,
+        dxvdt.parttheta, dxvdt.partphitor, dxvdt.partvpar, dxvdt.partw);
   }
 }

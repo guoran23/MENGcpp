@@ -215,6 +215,7 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
     return;
   }
   //
+  this->omega0 = omega_arr; // Store omega0 for later use
 
   for (int i = 0; i < this->lenntor; ++i) {
     mpoloidal_arr[i] = 2 + i; // 例如：每个 toroidal mode 不同的 poloidal 模数
