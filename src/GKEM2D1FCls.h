@@ -27,7 +27,9 @@ public:
   double dtoTA, dtoTN;
   double time_all, time_save;
   int rank, size;
-  int lenntor; // ntor1d.size()
+  int lenntor;   // ntor1d.size()
+  int itest = 0; // 0: test particle motion
+                 // 1: euler, 2: rk4
 
   // 物理对象
   Equilibrium equ;
@@ -77,11 +79,12 @@ public:
     // 写amplitude数据
     if (rank == 0) {
       write_amplitude(irun);
+      write_omega1(irun);
       // 写粒子轨迹数据（假设变量都已经准备好）
       for (int fsc = 0; fsc < nsp; ++fsc) {
         ParticleSpecies &species = this->pt->group.getSpecies(fsc);
         int ntrack_in = ntrack;
-        ntrack_in = std::max(ntrack_in, species.getNptot());
+        ntrack_in = std::min(ntrack_in, species.getNptot());
         write_particle(irun_rec, species, ntrack_in);
       }
     }
@@ -100,6 +103,24 @@ public:
 
     for (const auto &amp : fd.amplitude_arr) {
       outfile << std::scientific << std::setprecision(15) << amp << " ";
+    }
+    outfile << std::endl;
+    outfile.close();
+  };
+  void write_omega1(int irun) {
+    if (rank != 0)
+      return;
+
+    std::string sfile = "omega1.txt";
+    std::ofstream outfile;
+
+    if (irun == 0 && !irestart)
+      outfile.open(sfile, std::ios::out);
+    else
+      outfile.open(sfile, std::ios::app);
+
+    for (const auto &omg1 : this->omega_1) {
+      outfile << std::scientific << std::setprecision(15) << omg1 << " ";
     }
     outfile << std::endl;
     outfile.close();
@@ -173,29 +194,25 @@ public:
       std::cout << std::endl;
     }
   };
-  void gkem_cls_solve_delta_omega(
-      std::vector<double> &omega_0_in,
-      std::vector<std::complex<double>> &omega_1_out,
-      const std::vector<std::complex<double>> &amp,
-      //  std::vector<ParticleCoords> &xv0,
-      const std::vector<std::vector<double>> &partfog0_allsp,
-      const std::vector<ParticleCoords> &dxvdt) {
+  void  gkem_cls_solve_delta_omega(std::vector<double> &omega_0_in,
+                             std::vector<std::complex<double>> &omega_1_out,
+                             const std::vector<std::complex<double>> &amp,
+                             const std::vector<ParticleCoords> &dxvdt) {
     // 计算delta omega
 
     std::vector<std::complex<double>> TTT_tmp;
     TTT_tmp.resize(lenntor, std::complex<double>(0.0, 0.0));
     TTT.resize(lenntor, std::complex<double>(0.0, 0.0));
     for (int fsc = 0; fsc < nsp; ++fsc) {
-      std::vector<double> partfog0 = partfog0_allsp[fsc];
       ParticleSpecies &species = this->pt->group.getSpecies(fsc);
       ParticleCoords &coords = species.getCoords();
       int nptot = species.getNptot();
 
       fd.field_ext_cls_calc_T_oneSpecies(
           TTT_tmp, equ, species, coords.partrad, coords.parttheta,
-          coords.partphitor, coords.partvpar, coords.partw, partfog0,
-          dxvdt[fsc].partrad, dxvdt[fsc].parttheta, dxvdt[fsc].partphitor,
-          dxvdt[fsc].partvpar, dxvdt[fsc].partw,
+          coords.partphitor, coords.partvpar, coords.partw, dxvdt[fsc].partrad,
+          dxvdt[fsc].parttheta, dxvdt[fsc].partphitor, dxvdt[fsc].partvpar,
+          dxvdt[fsc].partw,
           /*icase*/ 0, fd.phik, fd.ntor1d, amp);
 
       for (int i = 0; i < lenntor; ++i) {
@@ -253,19 +270,41 @@ public:
     }
   }
 
+  void calc_amp_with_phase(std::vector<std::complex<double>> &amp_with_phase,
+                           const std::vector<std::complex<double>> &amp_in,
+                           const double time) {
+    std::complex<double> i_c(0.0, 1.0);
+    std::complex<double> zero_c(0.0, 0.0);
+    std::vector<std::complex<double>> fast_ossilation_phase;
+    amp_with_phase.resize(lenntor, zero_c);
+    fast_ossilation_phase.resize(lenntor, zero_c);
+    for (int itor = 0; itor < lenntor; ++itor) {
+      fast_ossilation_phase[itor] = -i_c * (this->omega_0[itor] * time);
+      amp_with_phase[itor] =
+          amp_in[itor] * fast_ossilation_phase[itor]; // 计算amplitude
+    }
+  };
+
   void add_dAdt(std::vector<std::complex<double>> &amp_tmp,
-                const std::vector<std::complex<double>> &omega_1_tmp,
+                const std::vector<std::complex<double>> &dAdt,
                 const double dt) {
+    std::complex<double> i_c(0.0, 1.0);
+    for (size_t itor = 0; itor < amp_tmp.size(); ++itor) {
+      amp_tmp[itor] += dAdt[itor] * dt;
+    }
+  };
+  void calc_dAdt(std::vector<std::complex<double>> &dAdt,
+                 const std::vector<std::complex<double>> &amp_tmp,
+                 const std::vector<std::complex<double>> &omega_1_tmp) {
     //
-    std::vector<std::complex<double>> dA;
-    dA.resize(lenntor, std::complex<double>(0.0, 0.0));
+    dAdt.resize(lenntor, std::complex<double>(0.0, 0.0));
     std::complex<double> i_c(0.0, 1.0);
     for (size_t itor = 0; itor < amp_tmp.size(); ++itor) {
       // dA/dt = - i * omega_1 * A
-      dA[itor] = -i_c * omega_1_tmp[itor] * amp_tmp[itor]; // 计算dA
-      amp_tmp[itor] += dA[itor] * dt;
+      dAdt[itor] = -i_c * omega_1_tmp[itor] * amp_tmp[itor]; // 计算dA
     }
   };
+
   void onestep_rk4(std::vector<ParticleCoords> &xv0,
                    std::vector<ParticleCoords> &dxv_sum,
                    std::vector<ParticleCoords> &dxvdt, double dt,
@@ -287,16 +326,11 @@ public:
 
     std::vector<double> fast_ossilation_phase;
     std::vector<std::complex<double>> amp0_with_phase;
+    std::vector<std::complex<double>> amp_with_phase_tmp;
     amp0_with_phase.resize(lenntor, zero_c);
-    fast_ossilation_phase.resize(lenntor, 0.0);
-    for (int itor = 0; itor < lenntor; ++itor) {
-      fast_ossilation_phase[itor] = std::cos(omega_0[itor] * time_now);
-      amp0_with_phase[itor] =
-          fd.amplitude_arr[itor] *
-          std::complex<double>(fast_ossilation_phase[itor], 0.0);
-    }
+    calc_amp_with_phase(amp0_with_phase, amp0, time_now);
 
-    // Step 1
+    // Step 1, at t = 0
     std::vector<std::vector<double>> partfog0_allsp, partmu0_allsp;
     partfog0_allsp.resize(nsp);
     partmu0_allsp.resize(nsp);
@@ -306,67 +340,67 @@ public:
       partmu0_allsp[fsc] = species.partmu;
     }
     std::vector<std::complex<double>> omega_1_tmp(lenntor, zero_c);
-    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp0, partfog0_allsp,
-                               dxvdt);
-    print_omega1(omega_1_tmp, rank);
-    // add_dAdt(amp_tmp, omega_1_tmp, dthalf);
 
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp0_with_phase, xv0,
-        partmu0_allsp, partfog0_allsp, dxvdt);
+        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp0_with_phase, dxvdt);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
+
+    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp0_with_phase, dxvdt);
+    calc_dAdt(dampdt, amp0, omega_1_tmp);
+    add_dAdt(damp_sum, dampdt, dt1o6);
 
     // Step 2
     pt->particle_add_coords2sp(*pt, dxvdt, dthalf);
 
-    // gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp_tmp,
-    // partfog0_allsp,
-    //                            dxvdt);
-    // print_omega1(omega_1_tmp, rank);
+    add_dAdt(amp_tmp, dampdt, dthalf);
+    calc_amp_with_phase(amp_with_phase_tmp, amp_tmp, time_now + dthalf);
 
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp0_with_phase, xv0,
-        partmu0_allsp, partfog0_allsp, dxvdt);
+        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase_tmp, dxvdt);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt2o6);
+
+    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp_with_phase_tmp, dxvdt);
+    calc_dAdt(dampdt, amp_tmp, omega_1_tmp);
+    add_dAdt(damp_sum, dampdt, dt2o6);
 
     // Step 3
     pt->particle_setvalue2sp_from_coords(*pt, xv0); // reset to initial
     pt->particle_add_coords2sp(*pt, dxvdt, dthalf);
-    // gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp_tmp,
-    // partfog0_allsp,
-    //                            dxvdt);
-    // print_omega1(omega_1_tmp, rank);
+
+    amp_tmp = amp0;
+    add_dAdt(amp_tmp, dampdt, dthalf);
+    calc_amp_with_phase(amp_with_phase_tmp, amp_tmp, time_now + dthalf);
 
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp0_with_phase, xv0,
-        partmu0_allsp, partfog0_allsp, dxvdt);
+        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase_tmp, dxvdt);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt2o6);
+
+    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp_with_phase_tmp, dxvdt);
+    calc_dAdt(dampdt, amp_tmp, omega_1_tmp);
+    add_dAdt(damp_sum, dampdt, dt2o6);
 
     // // Step 4
     pt->particle_setvalue2sp_from_coords(*pt, xv0); // reset to initial
     pt->particle_add_coords2sp(*pt, dxvdt, dt);
 
-    // gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp_tmp,
-    // partfog0_allsp,
-    //                            dxvdt);
-    // print_omega1(omega_1_tmp, rank);
+    amp_tmp = amp0;
+    add_dAdt(amp_tmp, dampdt, dt);
+    calc_amp_with_phase(amp_with_phase_tmp, amp_tmp, time_now + dt);
+
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp0_with_phase, xv0,
-        partmu0_allsp, partfog0_allsp, dxvdt);
+        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase_tmp, dxvdt);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
+
+    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp_with_phase_tmp, dxvdt);
+    calc_dAdt(dampdt, amp_tmp, omega_1_tmp);
+    add_dAdt(damp_sum, dampdt, dt1o6);
 
     // Final update of aparsk and particle coordinates
 
     pt->particle_setvalue2sp_from_coords(*pt, xv0);
     pt->particle_add_coords2sp(*pt, dxv_sum, 1.0);
-
-    for (size_t itor = 0; itor < omega_1_tmp.size(); ++itor) {
-      amp_tmp[itor] *=
-          std::exp(std::complex<double>(0.0, -1.0) * dt * omega_1_tmp[itor]);
-      // amp_tmp[itor] *=
-      //     std::exp(std::complex<double>(0.0, -1.0) * omega_0[itor] * dt);
-    }
-    fd.amplitude_arr = amp_tmp; // 更新fd.amplitude_arr
+    fd.amplitude_arr = amp0;
+    add_dAdt(fd.amplitude_arr, damp_sum, 1.0);
   };
   void onestep_rk4_testParticle(std::vector<ParticleCoords> &xv0,
                                 std::vector<ParticleCoords> &dxv_sum,
@@ -376,16 +410,9 @@ public:
     double dt1o6 = dt / 6.0;
     double dt2o6 = dt * 2.0 / 6.0;
     std::complex<double> zero_c(0.0, 0.0);
-    std::vector<double> fast_ossilation_phase;
     std::vector<std::complex<double>> amp_with_phase;
     amp_with_phase.resize(lenntor, zero_c);
-    fast_ossilation_phase.resize(lenntor, 0.0);
-    for (int itor = 0; itor < lenntor; ++itor) {
-      fast_ossilation_phase[itor] = std::cos(omega_0[itor] * time_now);
-      amp_with_phase[itor] =
-          fd.amplitude_arr[itor] *
-          std::complex<double>(fast_ossilation_phase[itor], 0.0);
-    }
+    calc_amp_with_phase(amp_with_phase, fd.amplitude_arr, time_now);
 
     for (int fsc = 0; fsc < nsp; ++fsc) {
       ParticleSpecies &species = pt->group.getSpecies(fsc);
@@ -407,21 +434,18 @@ public:
       partmu0_allsp[fsc] = species.partmu;
     }
     std::vector<std::complex<double>> omega_1_tmp(lenntor, zero_c);
-    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp0, partfog0_allsp,
-                               dxvdt);
+    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp0, dxvdt);
     print_omega1(omega_1_tmp, rank);
 
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, xv0,
-        partmu0_allsp, partfog0_allsp, dxvdt);
+        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, dxvdt);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
 
     // Step 2
     pt->particle_add_coords2sp(*pt, dxvdt, dthalf);
-
+    calc_amp_with_phase(amp_with_phase, amp_tmp, time_now + dthalf);
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, xv0,
-        partmu0_allsp, partfog0_allsp, dxvdt);
+        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, dxvdt);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt2o6);
 
     // Step 3
@@ -429,17 +453,16 @@ public:
     pt->particle_add_coords2sp(*pt, dxvdt, dthalf);
 
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, xv0,
-        partmu0_allsp, partfog0_allsp, dxvdt);
+        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, dxvdt);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt2o6);
 
     // // Step 4
     pt->particle_setvalue2sp_from_coords(*pt, xv0); // reset to initial
     pt->particle_add_coords2sp(*pt, dxvdt, dt);
+    calc_amp_with_phase(amp_with_phase, amp_tmp, time_now + dt);
 
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, xv0,
-        partmu0_allsp, partfog0_allsp, dxvdt);
+        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, dxvdt);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
 
     // Final update of aparsk and particle coordinates
@@ -448,7 +471,46 @@ public:
     pt->particle_add_coords2sp(*pt, dxv_sum, 1.0);
   };
 
-  void onestep_euler();
+  void onestep_euler(std::vector<ParticleCoords> &xv0,
+                     std::vector<ParticleCoords> &dxvdt, double dt,
+                     double time_now) {
+
+    std::complex<double> zero_c(0.0, 0.0);
+
+    for (int fsc = 0; fsc < nsp; ++fsc) {
+      ParticleSpecies &species = pt->group.getSpecies(fsc);
+      int nptot = species.getNptot();
+      xv0[fsc] = species.getCoords(); // xv0= pt
+    }
+    std::vector<std::complex<double>> amp_tmp;
+    amp_tmp = fd.amplitude_arr; // 复制amplitude_arr到amp_tmp
+    amp0 = fd.amplitude_arr;
+
+    std::vector<std::complex<double>> amp0_with_phase;
+    amp0_with_phase.resize(lenntor, zero_c);
+    calc_amp_with_phase(amp0_with_phase, amp0, time_now);
+
+    // Step 1
+    std::vector<std::vector<double>> partfog0_allsp, partmu0_allsp;
+    partfog0_allsp.resize(nsp);
+    partmu0_allsp.resize(nsp);
+    for (int fsc = 0; fsc < nsp; ++fsc) {
+      ParticleSpecies &species = this->pt->group.getSpecies(fsc);
+      partfog0_allsp[fsc] = species.partfog;
+      partmu0_allsp[fsc] = species.partmu;
+    }
+
+    pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
+        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp0_with_phase, dxvdt);
+    std::vector<std::complex<double>> omega_1_tmp(lenntor, zero_c);
+    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp0_with_phase, dxvdt);
+    calc_dAdt(dampdt, amp0, omega_1_tmp);
+    pt->particle_add_coords2sp(*pt, dxvdt, dt);
+    add_dAdt(amp_tmp, dampdt, dt);
+
+    fd.amplitude_arr = amp_tmp;  // 更新fd.amplitude_arr
+    this->omega_1 = omega_1_tmp; // 更新omega_1
+  };
   void onestep_heun();
   void test() {
     gkem_cls_initialize();
@@ -469,7 +531,18 @@ public:
       if (rank == 0) {
         std::cout << "Running step " << i + 1 << " of " << nrun << std::endl;
       }
-      onestep_rk4(xv0, dxv_sum, dxvdt, dtoTA, time_now);
+      if (itest == 0) {
+        onestep_rk4_testParticle(xv0, dxv_sum, dxvdt, dtoTA, time_now);
+
+      } else if (itest == 1) {
+        onestep_euler(xv0, dxvdt, dtoTA, time_now);
+      } else if (itest == 2) {
+        onestep_rk4(xv0, dxv_sum, dxvdt, dtoTA, time_now);
+      } else {
+        throw std::runtime_error("Invalid itest number: " +
+                                 std::to_string(itest));
+      }
+
       if (rank == 0) {
         std::cout << "Step " << i + 1 << " completed." << std::endl;
         std::cout << std::endl;
@@ -526,6 +599,7 @@ void GKEM2D1FCls::gkem_cls_readInput(const std::string &inputFile) {
   // Read key-value pairs
   nrun = reader.GetInteger("MENG", "nrun", 2);
   dtoTA = reader.GetReal("MENG", "dtoTA", 0.01);
+  itest = reader.GetInteger("MENG", "itest", 0);
 }
 void GKEM2D1FCls::gkem_cls_initialize() {
 

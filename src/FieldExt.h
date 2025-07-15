@@ -49,7 +49,7 @@ public:
       const std::vector<double> &parttheta0,
       const std::vector<double> &partphitor0,
       const std::vector<double> &partvpar0, const std::vector<double> &partw0,
-      const std::vector<double> &partfog0, const std::vector<double> &draddt,
+       const std::vector<double> &draddt,
       const std::vector<double> &dthetadt, const std::vector<double> &dphitordt,
       const std::vector<double> &dvpardt, const std::vector<double> &dwdt,
       const int icase, const std::vector<std::complex<double>> &phik_c,

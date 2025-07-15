@@ -350,6 +350,6 @@ int main(int argc, char **argv) {
   // return 0;
 
   GKEM2D1FCls gkem2d1f(argc, argv);
-  gkem2d1f.testParticle();
-  // gkem2d1f.test();
+  // gkem2d1f.testParticle();
+  gkem2d1f.test(); // test with itest = 0 1 2
 }

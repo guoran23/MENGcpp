@@ -59,7 +59,7 @@ void FieldExtCls::field_ext_cls_calc_W(
 
   for (int itor = 0; itor < lenntor; ++itor) {
     // integrate over toroidal angle
-    WWW[itor] *= twopi;
+    WWW[itor] *= M_PI;
   }
 }
 
@@ -70,10 +70,10 @@ void FieldExtCls::field_ext_cls_calc_T_oneSpecies(
     const std::vector<double> &parttheta0,
     const std::vector<double> &partphitor0,
     const std::vector<double> &partvpar0, const std::vector<double> &partw0,
-    const std::vector<double> &partfog0, const std::vector<double> &draddt,
-    const std::vector<double> &dthetadt, const std::vector<double> &dphitordt,
-    const std::vector<double> &dvpardt, const std::vector<double> &dwdt,
-    const int icase, const std::vector<std::complex<double>> &phik_c,
+    const std::vector<double> &draddt, const std::vector<double> &dthetadt,
+    const std::vector<double> &dphitordt, const std::vector<double> &dvpardt,
+    const std::vector<double> &dwdt, const int icase,
+    const std::vector<std::complex<double>> &phik_c,
     const std::vector<int> &ntor1d,
     const std::vector<std::complex<double>> &amp) {
 
@@ -84,9 +84,8 @@ void FieldExtCls::field_ext_cls_calc_T_oneSpecies(
   int nptot = species.getNptot();
   if (partrad0.size() != nptot || parttheta0.size() != nptot ||
       partphitor0.size() != nptot || partw0.size() != nptot ||
-      partfog0.size() != nptot || draddt.size() != nptot ||
-      dthetadt.size() != nptot || dphitordt.size() != nptot ||
-      dvpardt.size() != nptot) {
+      draddt.size() != nptot || dthetadt.size() != nptot ||
+      dphitordt.size() != nptot || dvpardt.size() != nptot) {
     std::cerr << "Error: Particle data size mismatch." << std::endl;
     return;
   }
@@ -211,7 +210,8 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
   }
   // 检查 omega_arr 和 amp_arr 的大小是否与 lenntor 匹配
   if (omega_arr.size() != this->lenntor || amp_arr.size() != this->lenntor) {
-    std::cerr << "Error: omega_arr and amp_arr must have the same size as lenntor.\n";
+    std::cerr
+        << "Error: omega_arr and amp_arr must have the same size as lenntor.\n";
     return;
   }
   //

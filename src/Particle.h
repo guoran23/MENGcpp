@@ -27,6 +27,7 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <chrono> // for time-based seed
 
 class ParticleCoords {
 private:
@@ -707,6 +708,8 @@ public:
   // Assuming bspline_1d is a class or struct defined elsewhere
   // bspline_1d dens_bsp, Tem_bsp;
   int load_can, ischeme_load;
+  int load_seed;
+  bool use_random_seed = false; // 是否使用新的随机数生成器
   double Bax;
   double rmin = 0.2, rmax = 0.8;
   double Stot, Vtot, dens_mean, dens_intg;
@@ -763,6 +766,13 @@ public:
     }
     nsp = reader.GetInteger("MENG", "nsp", 0);
     int ischeme_motion = reader.GetInteger("MENG", "ischeme_motion", 2);
+    use_random_seed = reader.GetBoolean("MENG", "use_random_seed", false);
+    if (use_random_seed) {
+      load_seed = static_cast<int>(
+          std::chrono::system_clock::now().time_since_epoch().count());
+    } else {
+      load_seed = 42; // Default seed for reproducibility
+    }
     // Iterate over predefined sections
     for (int i = 1; i <= nsp; ++i) {
       std::string section = "Particle_" + std::to_string(i);
@@ -835,7 +845,7 @@ public:
         auto &species = group.getSpecies(i);
         this->particle_cls_set_parms(equ, species, rank);
         std::cout << "Finish particle_cls_set_parms...\n";
-        this->particle_cls_loadmarker(equ, species);
+        this->particle_cls_loadmarker(equ, species, load_seed);
       }
     }
   }
@@ -862,7 +872,7 @@ public:
         auto &species = group.getSpecies(i);
         this->particle_cls_set_parms(equ, species, rank);
         std::cout << "Finish particle_cls_set_parms...\n";
-        this->particle_cls_loadmarker(equ, species);
+        this->particle_cls_loadmarker(equ, species, load_seed);
       }
     }
   }
@@ -872,24 +882,6 @@ public:
     aminor = equ.rdim / 2;
     rmaj = equ.rmaxis;
     rhotN = equ.rhoN;
-  }
-
-  void random_seed() {
-    // Initialize random seed
-    srand(time(0));
-  }
-
-  void random_number(std::vector<double> &vec) {
-    for (auto &v : vec) {
-      v = static_cast<double>(rand()) / RAND_MAX;
-    }
-  }
-
-  double gennor(double mu, double sigma) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::normal_distribution<> dis(mu, sigma);
-    return dis(gen);
   }
 
   double particle_cls_getf0(double partrad, double parttheta, double partvpar,
@@ -1287,8 +1279,9 @@ public:
     }
   }
 
-  void particle_setvalue2sp_from_coords(
-      Particle &pt, const std::vector<ParticleCoords> &xv0) {
+  void
+  particle_setvalue2sp_from_coords(Particle &pt,
+                                   const std::vector<ParticleCoords> &xv0) {
     int nsp_tmp = xv0.size();
     if (nsp_tmp != pt.getNsp()) {
       std::cerr << "Error: wrong nsp in particle_setvalue2sp_from_coords"
@@ -1322,8 +1315,32 @@ public:
     }
   }
 
-  void particle_cls_loadmarker(Equilibrium &equ, ParticleSpecies &species) {
-    std::cout << "--------LOAD MARKER--------" << std::endl;
+  std::mt19937 gen;
+
+  void init_random_generator(int seed = 42) { gen.seed(seed); }
+
+  double rand_uniform_01() {
+    static std::uniform_real_distribution<double> dist(0.0, 1.0);
+    return dist(gen);
+  }
+
+  double rand_normal(double mu, double sigma) {
+    std::normal_distribution<double> dist(mu, sigma);
+    return dist(gen);
+  }
+
+  void random_vector_uniform(std::vector<double> &vec) {
+    for (auto &v : vec) {
+      v = rand_uniform_01();
+    }
+  }
+
+  void particle_cls_loadmarker(Equilibrium &equ, ParticleSpecies &species,
+                               int seed = 42) {
+    std::cout << "--------LOAD MARKER (Seed = " << seed << ")--------"
+              << std::endl;
+
+    init_random_generator(seed);
 
     auto &coords = species.getCoords();
     auto &partrad = coords.partrad;
@@ -1341,64 +1358,47 @@ public:
     const double mass = species.getMass();
 
     // Init Random
-    random_seed();
-    random_number(partrad);
+    random_vector_uniform(partrad);
+    random_vector_uniform(parttheta);
+    random_vector_uniform(partphitor);
 
     double c0rnd, c1rnd;
     double Tpar, Tperp, zwidprod, BB;
-    int fic;
+    c0rnd = rmin * rmin;
+    c1rnd = rmax * rmax - rmin * rmin;
 
-    // 1. Rad
-    if (ischeme_load == 1) {
-      for (fic = 0; fic < nptot; ++fic) {
-        c0rnd = rmin * rmin;
-        c1rnd = rmax * rmax - rmin * rmin;
+    for (int fic = 0; fic < nptot; ++fic) {
+
+      // 1. Rad
+      if (ischeme_load == 1) {
         partrad[fic] = sqrt(partrad[fic] * c1rnd + c0rnd);
-      }
-    } else if (ischeme_load == 2) {
-      for (fic = 0; fic < nptot; ++fic) {
+      } else if (ischeme_load == 2) {
         partrad[fic] = partrad[fic] * rwid + rmin;
       }
-    }
 
-    // 2.3 Theta, Phitor
-    random_number(parttheta);
-    random_number(partphitor);
-    for (fic = 0; fic < nptot; ++fic) {
+      // 2.3 Theta, Phitor
       parttheta[fic] = parttheta[fic] * 2.0 * M_PI;
       partphitor[fic] = partphitor[fic] * phitorwid + phitormin;
-    }
 
-    // 4. Vpar
-    double vpar0 = 0.0;
-    double rndmu4 = vpar0;
-    double rndsd4;
-    for (fic = 0; fic < nptot; ++fic) {
+      // 4. Vpar : truncated normal
       Tpar = species.getTem1d(partrad[fic]);
-      rndsd4 = sqrt(Tpar / mass) * sqrt(1.0 / 2.0);
-      double rndf8 = gennor(rndmu4, rndsd4);
-      while (abs(rndf8) >= vparmaxovN) {
-        rndf8 = gennor(rndmu4, rndsd4);
-      }
-      partvpar[fic] = rndf8;
-    }
+      double stddev_vpar = sqrt(Tpar / mass * 0.5);
+      double vpar;
+      do {
+        vpar = rand_normal(0.0, stddev_vpar);
+      } while (std::abs(vpar) >= vparmaxovN);
+      partvpar[fic] = vpar;
 
-    // 5. Mu
-    zwidprod = phitorwid * rwid * 2.0 * M_PI;
-
-    for (fic = 0; fic < nptot; ++fic) {
+      // 5. Mu: truncated exponential
+      zwidprod = phitorwid * rwid * 2.0 * M_PI;
       Tperp = species.getTem1d(partrad[fic]);
-      double rndf8 = static_cast<double>(rand()) / RAND_MAX;
-
       BB = equ.getB(partrad[fic], parttheta[fic]);
-      // std::cout << "partmu[" << fic << "]: " << partmu[fic] << std::endl;
-
-      partmu[fic] = -Tperp / mass * std::log(rndf8) / BB / 2.0;
-
-      while (partmu[fic] >= mumaxovN2) {
-        rndf8 = static_cast<double>(rand()) / RAND_MAX;
-        partmu[fic] = -Tperp / mass * std::log(rndf8) / BB / 2.0;
-      }
+      double mu;
+      do {
+        double rnd = rand_uniform_01();
+        mu = -Tperp / mass * std::log(rnd) / BB / 2.0;
+      } while (mu >= mumaxovN2);
+      partmu[fic] = mu;
 
       // 1b. full weight
       if (load_can == 0) {
@@ -1409,12 +1409,11 @@ public:
                        dens_mean;
       }
 
+      double jaco = equ.getjaco3(partrad[fic], parttheta[fic]);
       if (ischeme_load == 1) {
-        partfog[fic] *= equ.getjaco3(partrad[fic], parttheta[fic]) * zwidprod /
-                        Vtot * rmid / partrad[fic];
+        partfog[fic] *= jaco * zwidprod / Vtot * rmid / partrad[fic];
       } else if (ischeme_load == 2) {
-        partfog[fic] *=
-            equ.getjaco3(partrad[fic], parttheta[fic]) * zwidprod / Vtot;
+        partfog[fic] *= jaco * zwidprod / Vtot;
       } else {
         std::cerr << "Error: wrong ISCHEME_LOAD value; set to 1" << std::endl;
       }
@@ -1435,15 +1434,16 @@ public:
       }
       // print particle info
       // std::cout << "partrad[" << fic << "]: " << partrad[fic] << std::endl;
-      // std::cout << "parttheta[" << fic << "]: " << parttheta[fic] << std::endl;
-      // std::cout << "partphitor[" << fic << "]: " << partphitor[fic]
+      // std::cout << "parttheta[" << fic << "]: " << parttheta[fic] <<
+      // std::endl; std::cout << "partphitor[" << fic << "]: " <<
+      // partphitor[fic]
       //           << std::endl;
-      // std::cout << "partvpar[" << fic << "]: " << partvpar[fic] << std::endl;
-      // std::cout << "partmu[" << fic << "]: " << partmu[fic] << std::endl;
-      // std::cout << "partfog[" << fic << "]: " << partfog[fic] << std::endl;
-      // std::cout << "partg0[" << fic << "]: " << partg0[fic] << std::endl;
-      // std::cout << "partw[" << fic << "]: " << partw[fic] << std::endl;
-      // std::cout << "---------------------------" << std::endl;
+      // std::cout << "partvpar[" << fic << "]: " << partvpar[fic] <<
+      // std::endl; std::cout << "partmu[" << fic << "]: " << partmu[fic] <<
+      // std::endl; std::cout << "partfog[" << fic << "]: " << partfog[fic] <<
+      // std::endl; std::cout << "partg0[" << fic << "]: " << partg0[fic] <<
+      // std::endl; std::cout << "partw[" << fic << "]: " << partw[fic] <<
+      // std::endl; std::cout << "---------------------------" << std::endl;
     }
   }
 };

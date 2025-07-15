@@ -6,15 +6,23 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f_2sp(
     const std::vector<std::complex<double>> &apark,
     const std::vector<int> &ntor1d,
     const std::vector<std::complex<double>> &amp,
-    const std::vector<ParticleCoords> &xv0,
-    std::vector<std::vector<double>> &partmu0_allsp,
-    std::vector<std::vector<double>> &partfog0_allsp,
     std::vector<ParticleCoords> &dxvdt) {
 
-  if (xv0.size() != getNsp()) {
-    std::cerr << "Error: xv0 size does not match ntor1d size." << std::endl;
-    return;
+  std::vector<ParticleCoords> xv0;
+  std::vector<std::vector<double>> partmu0_allsp;
+  std::vector<std::vector<double>> partfog0_allsp;
+  int nsp = this->getNsp();
+  xv0.resize(nsp);
+  partmu0_allsp.resize(nsp);
+  partfog0_allsp.resize(nsp);
+  for (int fsc = 0; fsc < nsp; ++fsc) {
+    ParticleSpecies &species = this->group.getSpecies(fsc);
+    int nptot = species.getNptot();
+    xv0[fsc] = species.getCoords(); // xv0= pt
+    partmu0_allsp[fsc] = species.partmu;
+    partfog0_allsp[fsc] = species.partfog;
   }
+
   if (partmu0_allsp.size() != getNsp()) {
     std::cerr << "Error: partmu0_allsp size does not match ntor1d size."
               << std::endl;

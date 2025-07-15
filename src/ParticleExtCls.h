@@ -51,9 +51,6 @@ public:
       const std::vector<std::complex<double>> &apark,
       const std::vector<int> &ntor1d, 
       const std::vector<std::complex<double>> &amp,
-      const std::vector<ParticleCoords> &xv0,
-      std::vector<std::vector<double>> &partmu0_allsp,
-      std::vector<std::vector<double>> &partfog0_allsp,
       std::vector<ParticleCoords> &dxvdt);
 
   // ---- Time-stepping (Electromagnetic) ----
