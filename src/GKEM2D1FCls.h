@@ -194,7 +194,8 @@ public:
       std::cout << std::endl;
     }
   };
-  void  gkem_cls_solve_delta_omega(std::vector<double> &omega_0_in,
+  void
+  gkem_cls_solve_delta_omega(std::vector<double> &omega_0_in,
                              std::vector<std::complex<double>> &omega_1_out,
                              const std::vector<std::complex<double>> &amp,
                              const std::vector<ParticleCoords> &dxvdt) {
@@ -236,31 +237,31 @@ public:
                   << " (invalid) at step " << std::endl;
       }
 
-      if (std::abs(WWW[i]) < 1e-12 || !std::isfinite(WWW[i])) {
-        std::cout << "Rank " << rank << " | WWW[" << i << "] = " << WWW[i]
-                  << " (invalid) at step " << std::endl;
-      }
+      // if (std::abs(WWW[i]) < 1e-12 || !std::isfinite(WWW[i])) {
+      //   std::cout << "Rank " << rank << " | WWW[" << i << "] = " << WWW[i]
+      //             << " (invalid) at step " << std::endl;
+      // }
     }
 
-    for (int i = 0; i < lenntor; ++i) {
-      {
-        std::cout << "before MPI sum calculated T: " << std::endl;
-        std::cout << "Rank " << rank << " | TTT[" << i << "] = " << TTT[i]
-                  << std::endl;
-      }
-    }
+    // for (int i = 0; i < lenntor; ++i) {
+    //   {
+    //     std::cout << "before MPI sum calculated T: " << std::endl;
+    //     std::cout << "Rank " << rank << " | TTT[" << i << "] = " << TTT[i]
+    //               << std::endl;
+    //   }
+    // }
 
     // MPI 通信
     MPI_Allreduce(MPI_IN_PLACE, TTT.data(), lenntor, MPI_DOUBLE_COMPLEX,
                   MPI_SUM, MPI_COMM_WORLD);
 
-    for (int i = 0; i < lenntor; ++i) {
-      {
-        std::cout << "after MPI sum calculated T: " << std::endl;
-        std::cout << "Rank " << rank << " | TTT[" << i << "] = " << TTT[i]
-                  << std::endl;
-      }
-    }
+    // for (int i = 0; i < lenntor; ++i) {
+    //   {
+    //     std::cout << "after MPI sum calculated T: " << std::endl;
+    //     std::cout << "Rank " << rank << " | TTT[" << i << "] = " << TTT[i]
+    //               << std::endl;
+    //   }
+    // }
 
     // 计算omega
     for (int i = 0; i < lenntor; ++i) {
@@ -328,19 +329,12 @@ public:
     std::vector<std::complex<double>> amp0_with_phase;
     std::vector<std::complex<double>> amp_with_phase_tmp;
     amp0_with_phase.resize(lenntor, zero_c);
+    amp_with_phase_tmp.resize(lenntor, zero_c);
     calc_amp_with_phase(amp0_with_phase, amp0, time_now);
-
-    // Step 1, at t = 0
-    std::vector<std::vector<double>> partfog0_allsp, partmu0_allsp;
-    partfog0_allsp.resize(nsp);
-    partmu0_allsp.resize(nsp);
-    for (int fsc = 0; fsc < nsp; ++fsc) {
-      ParticleSpecies &species = this->pt->group.getSpecies(fsc);
-      partfog0_allsp[fsc] = species.partfog;
-      partmu0_allsp[fsc] = species.partmu;
-    }
+    amp_with_phase_tmp = amp0_with_phase;
     std::vector<std::complex<double>> omega_1_tmp(lenntor, zero_c);
 
+    // Step 1, at t = 0
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
         equ, fd, fd.phik, fd.apark, fd.ntor1d, amp0_with_phase, dxvdt);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
@@ -351,7 +345,6 @@ public:
 
     // Step 2
     pt->particle_add_coords2sp(*pt, dxvdt, dthalf);
-
     add_dAdt(amp_tmp, dampdt, dthalf);
     calc_amp_with_phase(amp_with_phase_tmp, amp_tmp, time_now + dthalf);
 
@@ -395,12 +388,11 @@ public:
     calc_dAdt(dampdt, amp_tmp, omega_1_tmp);
     add_dAdt(damp_sum, dampdt, dt1o6);
 
-    // Final update of aparsk and particle coordinates
-
+    // Final update of Amp and particle coordinates
     pt->particle_setvalue2sp_from_coords(*pt, xv0);
     pt->particle_add_coords2sp(*pt, dxv_sum, 1.0);
-    fd.amplitude_arr = amp0;
     add_dAdt(fd.amplitude_arr, damp_sum, 1.0);
+    this->omega_1 = omega_1_tmp; // update omega_1 for recording
   };
   void onestep_rk4_testParticle(std::vector<ParticleCoords> &xv0,
                                 std::vector<ParticleCoords> &dxv_sum,
@@ -410,9 +402,9 @@ public:
     double dt1o6 = dt / 6.0;
     double dt2o6 = dt * 2.0 / 6.0;
     std::complex<double> zero_c(0.0, 0.0);
-    std::vector<std::complex<double>> amp_with_phase;
+    std::vector<std::complex<double>> amp_tmp, amp_with_phase;
+    amp_tmp.resize(lenntor, zero_c);
     amp_with_phase.resize(lenntor, zero_c);
-    calc_amp_with_phase(amp_with_phase, fd.amplitude_arr, time_now);
 
     for (int fsc = 0; fsc < nsp; ++fsc) {
       ParticleSpecies &species = pt->group.getSpecies(fsc);
@@ -420,26 +412,18 @@ public:
       dxv_sum[fsc].initialize(nptot); // dxv_sum initialize to 0.0
       xv0[fsc] = species.getCoords(); // xv0= pt
     }
-    std::vector<std::complex<double>> amp_tmp;
     amp_tmp = fd.amplitude_arr; // 复制amplitude_arr到amp_tmp
     amp0 = fd.amplitude_arr;
+    calc_amp_with_phase(amp_with_phase, fd.amplitude_arr, time_now);
+    std::vector<std::complex<double>> omega_1_tmp(lenntor, zero_c);
 
     // Step 1
-    std::vector<std::vector<double>> partfog0_allsp, partmu0_allsp;
-    partfog0_allsp.resize(nsp);
-    partmu0_allsp.resize(nsp);
-    for (int fsc = 0; fsc < nsp; ++fsc) {
-      ParticleSpecies &species = this->pt->group.getSpecies(fsc);
-      partfog0_allsp[fsc] = species.partfog;
-      partmu0_allsp[fsc] = species.partmu;
-    }
-    std::vector<std::complex<double>> omega_1_tmp(lenntor, zero_c);
-    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp0, dxvdt);
-    print_omega1(omega_1_tmp, rank);
-
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
         equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, dxvdt);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
+
+    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp_with_phase, dxvdt);
+    print_omega1(omega_1_tmp, rank);
 
     // Step 2
     pt->particle_add_coords2sp(*pt, dxvdt, dthalf);
@@ -491,15 +475,6 @@ public:
     calc_amp_with_phase(amp0_with_phase, amp0, time_now);
 
     // Step 1
-    std::vector<std::vector<double>> partfog0_allsp, partmu0_allsp;
-    partfog0_allsp.resize(nsp);
-    partmu0_allsp.resize(nsp);
-    for (int fsc = 0; fsc < nsp; ++fsc) {
-      ParticleSpecies &species = this->pt->group.getSpecies(fsc);
-      partfog0_allsp[fsc] = species.partfog;
-      partmu0_allsp[fsc] = species.partmu;
-    }
-
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
         equ, fd, fd.phik, fd.apark, fd.ntor1d, amp0_with_phase, dxvdt);
     std::vector<std::complex<double>> omega_1_tmp(lenntor, zero_c);
@@ -532,23 +507,19 @@ public:
         std::cout << "Running step " << i + 1 << " of " << nrun << std::endl;
       }
       if (itest == 0) {
-        onestep_rk4_testParticle(xv0, dxv_sum, dxvdt, dtoTA, time_now);
+        onestep_rk4_testParticle(xv0, dxv_sum, dxvdt, dtoTN, time_now);
 
       } else if (itest == 1) {
-        onestep_euler(xv0, dxvdt, dtoTA, time_now);
+        onestep_euler(xv0, dxvdt, dtoTN, time_now);
       } else if (itest == 2) {
-        onestep_rk4(xv0, dxv_sum, dxvdt, dtoTA, time_now);
+        onestep_rk4(xv0, dxv_sum, dxvdt, dtoTN, time_now);
       } else {
         throw std::runtime_error("Invalid itest number: " +
                                  std::to_string(itest));
       }
 
-      if (rank == 0) {
-        std::cout << "Step " << i + 1 << " completed." << std::endl;
-        std::cout << std::endl;
-      }
       gkem_cls_record(i + 1);
-      time_now += dtoTA; // 更新时间
+      time_now += dtoTN; // 更新时间 
     }
     if (rank == 0) {
       std::cout << "Test completed." << std::endl;
@@ -573,17 +544,17 @@ public:
       if (rank == 0) {
         std::cout << "Running step " << i + 1 << " of " << nrun << std::endl;
       }
-      onestep_rk4_testParticle(xv0, dxv_sum, dxvdt, dtoTA, time_now);
-      if (rank == 0) {
-        std::cout << "Step " << i + 1 << " completed." << std::endl;
-        std::cout << std::endl;
-      }
+      onestep_rk4_testParticle(xv0, dxv_sum, dxvdt, dtoTN, time_now);
+      // if (rank == 0) {
+      //   std::cout << "Step " << i + 1 << " completed." << std::endl;
+      //   std::cout << std::endl;
+      // }
       gkem_cls_record(i + 1);
     }
     if (rank == 0) {
       std::cout << "Test completed." << std::endl;
     }
-    time_now += dtoTA; // 更新时间
+    time_now += dtoTN; // 更新时间
   };
 };
 #endif // GKEM2D1FCLS_H
@@ -598,7 +569,7 @@ void GKEM2D1FCls::gkem_cls_readInput(const std::string &inputFile) {
   std::cout << "GKEM2D1FCls readInput: " << inputFile << std::endl;
   // Read key-value pairs
   nrun = reader.GetInteger("MENG", "nrun", 2);
-  dtoTA = reader.GetReal("MENG", "dtoTA", 0.01);
+  dtoTN = reader.GetReal("MENG", " dtoTN", 0.01);
   itest = reader.GetInteger("MENG", "itest", 0);
 }
 void GKEM2D1FCls::gkem_cls_initialize() {
@@ -610,7 +581,7 @@ void GKEM2D1FCls::gkem_cls_initialize() {
   equ.readInput("input.ini");
   pt = std::make_unique<ParticleExtCls>(equ, rank, size); // 初始化粒子
   nsp = pt->getNsp(); // 获取粒子种类数
-  double mass_ion = pt->mass_ion;
+  double mass_bk = pt->mass_bk;
 
   nstart = new int(0); // 指针分配
   // 打印配置信息
@@ -668,7 +639,7 @@ void GKEM2D1FCls::gkem_cls_initialize() {
 
   if (rank == 0) {
     std::cout << ">> nsp = " << nsp << std::endl;
-    std::cout << ">> mass_ion = " << mass_ion << std::endl;
+    std::cout << ">> Background mass_bk = " << mass_bk << std::endl;
     std::cout << ">> ntotfem2d1f = " << fd.getNtotfem2d1f() << std::endl;
 
     printf("----solve initial NJAP----\n");

@@ -170,6 +170,15 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     double ptw = partw0[fic];
     double ptfog = partfog0[fic];
 
+    if (ptrad < this->rmin || ptrad > this->rmax) {
+      draddt[fic] = 0.0;
+      dthetadt[fic] = 0.0;
+      dphitordt[fic] = 0.0;
+      dvpardt[fic] = 0.0;
+      dwdt[fic] = 0.0;
+      continue; // Skip particles outside the radial range
+    }
+
     double ptBthe_ct, ptBphi_ct;
     double ptBrad_co, ptBthe_co, ptBphi_co;
     double ptB, ptRR, ptZZ;

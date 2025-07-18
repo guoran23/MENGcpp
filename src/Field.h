@@ -12,7 +12,7 @@
 #ifndef FIELD_H
 #define FIELD_H
 
-#include "../inih/INIReader.h"
+#include "../inih/INIReaderExt.h"
 #include "Equilibrium.h"
 #include "MPIManager.h"
 #include "Particle.h"

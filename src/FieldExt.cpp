@@ -11,7 +11,7 @@ void FieldExtCls::field_ext_cls_calc_W(
   double rmin = this->radmin;
   lenntor = ntor1d.size();
   WWW.assign(lenntor, 0.0);
-  double mass = pt.mass_ion;
+  double mass = pt.mass_bk;
 
   std::vector<double> xrad(nrad), wrad(nrad);
   std::vector<double> xthe(nthe), wthe(nthe);
@@ -103,6 +103,10 @@ void FieldExtCls::field_ext_cls_calc_T_oneSpecies(
     double ptdthedt = dthetadt[fic];
     double ptdphidt = dphitordt[fic];
 
+    if (ptrad < this->radmin || ptrad > this->radmax) {
+      continue;
+    }
+
     std::vector<std::complex<double>> dfdrad_c, dfdthe_c, dfdphi_c;
     field_cls_g2p2d1f_grad_complex(equ, phik_c, ntor1d, amp, ptrad, ptthe,
                                    ptphi, dfdrad_c, dfdthe_c, dfdphi_c, 1, 0.0);
@@ -182,34 +186,35 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
       std::cout << "ntor1d[" << i << "] = " << ntor1d[i] << std::endl;
     }
   }
-  // 直接在函数中定义并初始化
-  std::vector<double> rc1_arr(this->lenntor, 0.5);
-  // std::vector<double> amp_arr(this->lenntor, 0.1); // eigenmode amplitude
-  std::vector<double> rwidth_arr(this->lenntor, 0.1);
-  // std::vector<double> omega_arr(this->lenntor, 1.0); // real frequency
-  std::vector<int> mpoloidal_arr(this->lenntor);
+
   // read perturbation parameters from input file
-  INIReader reader("input.ini");
+  INIReaderExt reader("input.ini");
 
   if (reader.ParseError() != 0) {
     std::cerr << "Can't load 'input.ini'\n";
   }
+  std::vector<double> omega_arr =
+      reader.GetRealList("Perturbation", "omega", {0.1}); //
+  std::vector<double> amp_arr = reader.GetRealList(
+      "Perturbation", "amplitude", {0.0}); // eigenmode amplitude
+  std::vector<double> rc1_arr = reader.GetRealList("Perturbation", "rc", {0.5});
+  std::vector<double> rwidth_arr =
+      reader.GetRealList("Perturbation", "rwidth", {0.1});
+  std::vector<std::vector<int>> mpoloidal_arr;
 
-  std::string omega0_str = reader.Get("Perturbation", "omega", "");
-  std::string amp_str = reader.Get("Perturbation", "amplitude", "");
-  std::vector<double> omega_arr = parseArray(omega0_str);
-  std::vector<double> amp_arr = parseArray(amp_str);
+  for (size_t i = 1; i <= omega_arr.size(); ++i) {
+    std::string key = "mpoloidal_mode" + std::to_string(i);
+    std::vector<int> mode_list = reader.GetIntList("Perturbation", key, {});
+    if (mode_list.empty()) {
+      throw std::runtime_error("Missing mpoloidal_mode" + std::to_string(i) +
+                               " for omega index " + std::to_string(i));
+    }
+    mpoloidal_arr.push_back(mode_list);
+  }
 
-  std::cout << "Omega0 values:\n";
-  for (double v : omega_arr) {
-    std::cout << "  " << v << "\n";
-  }
-  std::cout << "Amplitude values:\n";
-  for (double v : amp_arr) {
-    std::cout << "  " << v << "\n";
-  }
   // 检查 omega_arr 和 amp_arr 的大小是否与 lenntor 匹配
-  if (omega_arr.size() != this->lenntor || amp_arr.size() != this->lenntor) {
+  if (omega_arr.size() != this->lenntor || amp_arr.size() != this->lenntor ||
+      rc1_arr.size() != this->lenntor || rwidth_arr.size() != this->lenntor) {
     std::cerr
         << "Error: omega_arr and amp_arr must have the same size as lenntor.\n";
     return;
@@ -217,17 +222,20 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
   //
   this->omega0 = omega_arr; // Store omega0 for later use
 
-  for (int i = 0; i < this->lenntor; ++i) {
-    mpoloidal_arr[i] = 2 + i; // 例如：每个 toroidal mode 不同的 poloidal 模数
-  }
   if (rank == 0) {
-    std::cout
-        << "Initializing perturbations with rc1_arr, amp_arr, rwidth_arr, "
-           "mpoloidal_arr\n";
+    std::cout << "Initializing perturbations with rc1_arr, amp_arr, "
+                 "rwidth_arr, mpoloidal_arr\n";
     for (int i = 0; i < this->lenntor; ++i) {
-      std::cout << "itor=" << i << ", rc1=" << rc1_arr[i]
-                << ", amp=" << amp_arr[i] << ", rwidth=" << rwidth_arr[i]
-                << ", mpoloidal=" << mpoloidal_arr[i] << "\n";
+      std::cout << "itor=" << i << ", ntor=" << ntor1d[i]
+                << ", amp=" << amp_arr[i] << ", omega=" << omega_arr[i]
+                << ", rc1=" << rc1_arr[i] << ", rwidth=" << rwidth_arr[i]
+                << ", mpoloidal=[";
+      for (size_t j = 0; j < mpoloidal_arr[i].size(); ++j) {
+        std::cout << mpoloidal_arr[i][j];
+        if (j != mpoloidal_arr[i].size() - 1)
+          std::cout << ", ";
+      }
+      std::cout << "]\n";
     }
   }
   // give a MHD perturbation delta A_//=i/omega* \partial_// delta Phi
@@ -235,51 +243,53 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
     double rc1 = rc1_arr[itor];
     double amp_n = amp_arr[itor];
     double rwidth = rwidth_arr[itor];
-    int mpoloidal = mpoloidal_arr[itor];
     double omega = omega_arr[itor];
-    for (int j = 0; j < nthefem; ++j) {
-      for (int i = 0; i < nradfem; ++i) {
+    for (int impol = 0; impol < mpoloidal_arr[itor].size(); ++impol) {
+      int mpoloidal = mpoloidal_arr[itor][impol];
 
-        int idx = itor * nradfem * nthefem + j * nradfem + i;
+      for (int j = 0; j < nthefem; ++j) {
+        for (int i = 0; i < nradfem; ++i) {
 
-        double theta = themin + j * dtheta;
-        double r, radial_part;
+          int idx = itor * nradfem * nthefem + j * nradfem + i;
 
-        // 高斯径向部分
-        if (i == 0) {
-          radial_part = 0.0; // 边界条件
-        } else if (i == nradfem - 1) {
-          radial_part = 0.0; // 边界条件
-        } else {
-          r = radmin + (i - 1) * drad;
-          radial_part = amp_n * std::exp(-std::pow((r - rc1) / rwidth, 2));
-        }
+          double theta = themin + j * dtheta;
+          double r, radial_part;
 
-        // 角向复数部分
-        std::complex<double> angular_part =
-            std::exp(std::complex<double>(0, mpoloidal * theta));
+          // 高斯径向部分
+          if (i == 0) {
+            radial_part = 0.0; // 边界条件
+          } else if (i == nradfem - 1) {
+            radial_part = 0.0; // 边界条件
+          } else {
+            r = radmin + (i - 1) * drad;
+            radial_part = amp_n * std::exp(-std::pow((r - rc1) / rwidth, 2));
+          }
 
-        this->phik[idx] = radial_part * angular_part;
+          // 角向复数部分
+          std::complex<double> angular_part =
+              std::exp(std::complex<double>(0, mpoloidal * theta));
 
-        // 计算对应的 A_//=i/omega * \partial_// delta Phi
-        double ww = 0.0;
-        if (i == 0 || i == nradfem - 1) {
-          ww = 0.0; // 边界条件
-        } else {
-          double ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe;
-          double ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12, ptg22;
-          equ.calcBJgij(r, theta, ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe,
-                        ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12,
-                        ptg22);
-          ww =
-              -(mpoloidal * ptBthe_ct + ntor1d[itor] * ptBphi_ct) / ptB / omega;
-        }
+          this->phik[idx] += radial_part * angular_part;
 
-        this->apark[idx] =
-            std::complex<double>(ww, 0) * radial_part * angular_part;
-      }
-    }
-  }
+          // 计算对应的 A_//=i/omega * \partial_// delta Phi
+          double ww = 0.0;
+          if (i == 0 || i == nradfem - 1) {
+            ww = 0.0; // 边界条件
+          } else {
+            double ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe;
+            double ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12, ptg22;
+            equ.calcBJgij(r, theta, ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe,
+                          ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12,
+                          ptg22);
+            ww = -(mpoloidal * ptBthe_ct + ntor1d[itor] * ptBphi_ct) / ptB /
+                 omega;
+          }
+          this->apark[idx] +=
+              std::complex<double>(ww, 0) * radial_part * angular_part;
+        } // nradfem
+      }   // nthefem
+    }     // mpoloidal
+  }       // lenntor
 
   if (rank == 0) {
     std::vector<double> phik_real(phik.size());

@@ -12,12 +12,13 @@
 #ifndef PARTICLE_H
 #define PARTICLE_H
 
-#include "../inih/INIReader.h"
+#include "../inih/INIReaderExt.h"
 #include "Equilibrium.h"
 #include "Field.h"
 #include "MPIManager.h"
 #include "util_math.h"
 
+#include <chrono> // for time-based seed
 #include <cmath>
 #include <functional> // std::plus, std::multiplies
 #include <iomanip>
@@ -27,7 +28,6 @@
 #include <random>
 #include <string>
 #include <vector>
-#include <chrono> // for time-based seed
 
 class ParticleCoords {
 private:
@@ -154,6 +154,12 @@ protected:
   int size = 0;
 
 public:
+  int idensprof = 1; // density profile type
+  std::vector<double> dens_coef1d = {0.49123, 0.298228, 0.198739,
+                                     0.0037567601019};
+  int iTemprof = 1; // temperature profile type
+  std::vector<double> Tem_coef1d = {0.49123, 0.298228, 0.198739,
+                                    0.0037567601019};
   std::vector<double> partmu;
   std::vector<double> partfog, partg0;
   double rmin = 0.2, rmax = 0.8;
@@ -286,7 +292,7 @@ public:
   //
   double getTem1d(double radius) const {
     // Implement function to get temperature based on radius
-    return 1.0; // Placeholder
+    return Tem; // Placeholder
   }
   double getdlnTemdr1d(double radius) const {
     // Implement function to get the derivative of log temperature with respect
@@ -294,14 +300,52 @@ public:
     return 0.0; // Placeholder
   }
 
-  double getdens1d(double radius) const {
-    // Implement function to get density
-    return 1.0; // Placeholder
+  double getdens1d(double rad) const {
+    double var = 0.0;
+    switch (this->idensprof) {
+    case 0:
+      var = 0.0;
+      break;
+    case 1:
+      var = 1.0;
+      break;
+    case 2:
+      // ITPA EP
+      var = dens_coef1d[3] *
+            std::exp(-dens_coef1d[2] / dens_coef1d[1] *
+                     std::tanh((rad - dens_coef1d[0]) / dens_coef1d[2]));
+      break;
+    default:
+      // 可选：处理未知情况
+      std::cerr << "Unknown idensprof = " << this->idensprof << std::endl;
+      break;
+    }
+
+    return var;
   }
-  double getdlndensdr1d(double radius) const {
-    // Implement function to get the derivative of log density with respect to
-    // radius
-    return 0.0; // Placeholder
+  double getdlndensdr1d(double rad) const {
+    double var = 0.0;
+    switch (this->idensprof) {
+    case 0:
+      var = 0.0;
+      break;
+
+    case 1:
+      var = 0.0;
+      break;
+    case 2:
+      // ITPA EP
+      var = -1.0 / dens_coef1d[1] *
+            (1.0 -
+             std::pow(std::tanh((rad - dens_coef1d[0]) / dens_coef1d[2]), 2));
+      break;
+    default:
+      // 可选：处理未知情况
+      std::cerr << "Unknown idensprof = " << this->idensprof << std::endl;
+      break;
+    }
+
+    return var;
   }
 
   double getdens1d_can(Equilibrium &equ, double radius, double theta,
@@ -701,10 +745,11 @@ public:
   double mumaxovN2;
   double vtovN;
   std::string profilename;
-  std::vector<double> dens_coef1d = {0.49123, 0.298228, 0.198739, 0.521298};
-  std::vector<double> Tem_coef1d = {0.49123, 0.298228, 0.198739, 0.521298};
-  int idensprof;
-  int iTemprof;
+  int ion_densprof;
+  std::vector<double> ion_dens_coef1d = {0.49123, 0.298228, 0.198739,
+                                     0.0037567601019};
+  // std::vector<double> Tem_coef1d = {0.49123, 0.298228, 0.198739, 0.521298};
+  // int iTemprof;
   // Assuming bspline_1d is a class or struct defined elsewhere
   // bspline_1d dens_bsp, Tem_bsp;
   int load_can, ischeme_load;
@@ -750,15 +795,35 @@ public:
   //
   // timer_cls timer;
 public:
-  double mass_ion = 1.0; // 背景质量
-  double getIondens1d(double radius) const {
-    // Implement function to get density
-    return 1.0; // Placeholder
+  double mass_bk = 1.0; // background mass
+  double getIondens1d(double rad) const {
+    // Background Ion density profile function
+    double var = 0.0;
+    switch (this->ion_densprof) {
+    case 0:
+      var = 0.0;
+      break;
+    case 1:
+      var = 1.0;
+      break;
+    case 2:
+      // ITPA ion density profile
+      var = 1.0 - ion_dens_coef1d[3] * std::exp(-ion_dens_coef1d[2] / ion_dens_coef1d[1] *
+                                            std::tanh((rad - ion_dens_coef1d[0]) /
+                                                      ion_dens_coef1d[2]));
+      break;
+    default:
+      // 可选：处理未知情况
+      std::cerr << "Unknown Ion densprof = " << this->ion_densprof << std::endl;
+      break;
+    }
+
+    return var;
   }
   // getters
   int getNsp() const { return nsp; }
   void readInput(const std::string &filepath, int mpisize) {
-    INIReader reader(filepath);
+    INIReaderExt reader(filepath);
     std::cout << "Reading input file: " << filepath << std::endl;
     std::cout << "Number of MPI processes: " << mpisize << std::endl;
     if (reader.ParseError() < 0) {
@@ -767,6 +832,10 @@ public:
     nsp = reader.GetInteger("MENG", "nsp", 0);
     int ischeme_motion = reader.GetInteger("MENG", "ischeme_motion", 2);
     use_random_seed = reader.GetBoolean("MENG", "use_random_seed", false);
+    ion_densprof = reader.GetInteger("MENG", "ion_densprof", 1);
+    ion_dens_coef1d =
+        reader.GetRealList("MENG", "ion_dens_coef1d", {0.0, 0.0, 0.0, 0.0});
+    //
     if (use_random_seed) {
       load_seed = static_cast<int>(
           std::chrono::system_clock::now().time_since_epoch().count());
@@ -783,11 +852,17 @@ public:
       double zcharge = reader.GetReal(section, "zcharge", 0.0);
       std::string species_name = reader.Get(section, "species_name", "unknown");
       double rmin = reader.GetReal(section, "rmin", 0.0);
-      double rmax = reader.GetReal(section, "rmax", 0.0);
+      double rmax = reader.GetReal(section, "rmax", 1.0);
       double Tem = reader.GetReal(section, "Tem", 1.0);
       double nsonN = reader.GetReal(section, "nsonN", 1.0);
       int ideltaf = reader.GetInteger(section, "ideltaf", 1);
       int ngyro = reader.GetInteger(section, "ngyro", 1);
+      int idensprof = reader.GetInteger(section, "idensprof", 1);
+      int iTemprof = reader.GetInteger(section, "iTemprof", 1);
+      std::vector<double> dens_coef1d =
+          reader.GetRealList(section, "dens_coef1d", {0.0, 0.0, 0.0, 0.0});
+      std::vector<double> Tem_coef1d =
+          reader.GetRealList(section, "Tem_coef1d", {0.0, 0.0, 0.0, 0.0});
 
       if (nptot_all > 0) {
         int nptot = nptot_all / mpisize; // calculate particles per process
@@ -803,6 +878,10 @@ public:
         species->setideltaf(ideltaf);
         species->setNgyro(ngyro);
         species->setIschemeMotion(ischeme_motion);
+        species->idensprof = idensprof;
+        species->iTemprof = iTemprof;
+        species->dens_coef1d = dens_coef1d;
+        species->Tem_coef1d = Tem_coef1d;
         std::cout << "  Species '" << species_name << "' added successfully.\n";
         // Log the parsed values
         std::cout << "  nptot: " << nptot << ", mass: " << mass
@@ -1060,8 +1139,8 @@ public:
     }
 
     // Density and Temperature Profiles
-    idensprof = 1;
-    iTemprof = 1;
+    // idensprof = 1;
+    // iTemprof = 1;
     load_can = 0;
     ischeme_load = 1;
     // Assuming dens_coef1d and Tem_coef1d are already populated
@@ -1211,11 +1290,13 @@ public:
       std::cout << "imixvar=" << imixvar << ", ibc_particle=" << ibc_particle
                 << ", sp_id=" << sp_id << ", ideltaf=" << ideltaf
                 << ", Nphimult=" << Nphimult << ", nptot=" << nptot
-                << ", nptot_all=" << nptot_all << ", idensprof=" << idensprof
-                << ", iTemprof=" << iTemprof << ", ntrack=" << irec_track
-                << ", ifilter=" << ifilter << ", pert_scheme=" << pert_scheme
-                << ", v_par0=" << v_par0 << ", v_d=" << v_d
-                << ", v_mirror=" << v_mirror << ", irec_track=" << irec_track
+                << ", nptot_all=" << nptot_all
+                << ", idensprof=" << species.idensprof
+                << ", iTemprof=" << species.iTemprof
+                << ", ntrack=" << irec_track << ", ifilter=" << ifilter
+                << ", pert_scheme=" << pert_scheme << ", v_par0=" << v_par0
+                << ", v_d=" << v_d << ", v_mirror=" << v_mirror
+                << ", irec_track=" << irec_track
                 << ", irec_Eparticle=" << irec_Eparticle
                 << ", irec_converge=" << irec_converge
                 << ", filter_nc=" << filter_nc
@@ -1235,10 +1316,6 @@ public:
                 << ", Tem=" << Tem << ", mass=" << mass
                 << ", zcharge=" << zcharge << ", vparmaxovt=" << vparmaxovt
                 << ", vparmaxovN=" << vparmaxovN << ", vtovN=" << vtovN
-                << ", c1=" << dens_coef1d[0] << ", c2=" << dens_coef1d[1]
-                << ", c3=" << dens_coef1d[2] << ", c4=" << dens_coef1d[3]
-                << ", c1T=" << Tem_coef1d[0] << ", c2T=" << Tem_coef1d[1]
-                << ", c3T=" << Tem_coef1d[2] << ", c4T=" << Tem_coef1d[3]
                 << ", Bax=" << Bax << ", rmin=" << rmin << ", rmax=" << rmax
                 << ", Stot=" << Stot << ", Vtot=" << Vtot
                 << ", aminor=" << 0.0 // Assuming aminor is defined elsewhere
