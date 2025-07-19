@@ -3,13 +3,15 @@ import matplotlib.pyplot as plt
 
 # === CONFIGURATION ===
 filename = "data_phik_initial.txt"
-lenntor = 2          # number of toroidal modes (adjust as needed)
+lenntor = 1          # number of toroidal modes (adjust as needed)
 nradfem = 12         # number of radial FEM nodes (adjust as needed)
 nthefem = 24        # number of poloidal FEM nodes (adjust as needed)
-radmin = 0.3         # min radius
-radmax = 0.7         # max radius
+radmin = 0.2         # min radius
+radmax = 0.8         # max radius
 themin = 0.0         # min theta (usually 0)
 themax = 2 * np.pi   # max theta
+amp = 0.002
+
 dtheta = (themax - themin) / nthefem  # poloidal step size
 
 # === LOAD DATA ===
@@ -46,7 +48,7 @@ phik_fixed_theta = phik_2d[ith, :]
 phik_avg_theta = np.mean(phik_2d, axis=0)
 
 # === 理论高斯函数 ===
-gauss_theory = 0.1 * np.exp(-((r - 0.5) / 0.1)**2)
+gauss_theory = amp * np.exp(-((r - 0.5) / 0.1)**2)
 
 # === 画图 ===
 plt.figure(figsize=(8, 5))
