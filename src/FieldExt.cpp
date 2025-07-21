@@ -197,24 +197,47 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
       reader.GetRealList("Perturbation", "omega", {0.1}); //
   std::vector<double> amp_arr = reader.GetRealList(
       "Perturbation", "amplitude", {0.0}); // eigenmode amplitude
-  std::vector<double> rc1_arr = reader.GetRealList("Perturbation", "rc", {0.5});
-  std::vector<double> rwidth_arr =
-      reader.GetRealList("Perturbation", "rwidth", {0.1});
   std::vector<std::vector<int>> mpoloidal_arr;
+  std::vector<std::vector<double>> rc_arr, rwidth_arr, mpoloidal_amp_arr;
 
   for (size_t i = 1; i <= omega_arr.size(); ++i) {
-    std::string key = "mpoloidal_mode" + std::to_string(i);
-    std::vector<int> mode_list = reader.GetIntList("Perturbation", key, {});
+    // mpoloidal_mode
+    std::string key_mode = "mpoloidal_mode" + std::to_string(i);
+    std::vector<int> mode_list =
+        reader.GetIntList("Perturbation", key_mode, {});
     if (mode_list.empty()) {
-      throw std::runtime_error("Missing mpoloidal_mode" + std::to_string(i) +
-                               " for omega index " + std::to_string(i));
+      throw std::runtime_error("Missing " + key_mode);
     }
     mpoloidal_arr.push_back(mode_list);
+
+    // rc
+    std::string key_rc = "rc_" + std::to_string(i);
+    std::vector<double> rc_list =
+        reader.GetRealList("Perturbation", key_rc, {});
+    if (rc_list.empty())
+      throw std::runtime_error("Missing or invalid " + key_rc);
+    rc_arr.push_back(rc_list);
+
+    // rwidth
+    std::string key_rwidth = "rwidth_" + std::to_string(i);
+    std::vector<double> rwidth_list =
+        reader.GetRealList("Perturbation", key_rwidth, {});
+    if (rwidth_list.empty())
+      throw std::runtime_error("Missing or invalid " + key_rwidth);
+    rwidth_arr.push_back(rwidth_list);
+
+    // mpoloidal_amp
+    std::string key_amp = "mpoloidal_amp" + std::to_string(i);
+    std::vector<double> amp_list =
+        reader.GetRealList("Perturbation", key_amp, {-1.0});
+    if (amp_list.empty())
+      throw std::runtime_error("Missing or invalid " + key_amp);
+    mpoloidal_amp_arr.push_back(amp_list);
   }
 
   // 检查 omega_arr 和 amp_arr 的大小是否与 lenntor 匹配
   if (omega_arr.size() != this->lenntor || amp_arr.size() != this->lenntor ||
-      rc1_arr.size() != this->lenntor || rwidth_arr.size() != this->lenntor) {
+      rc_arr.size() != this->lenntor || rwidth_arr.size() != this->lenntor) {
     std::cerr
         << "Error: omega_arr and amp_arr must have the same size as lenntor.\n";
     return;
@@ -223,29 +246,51 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
   this->omega0 = omega_arr; // Store omega0 for later use
 
   if (rank == 0) {
-    std::cout << "Initializing perturbations with rc1_arr, amp_arr, "
+    std::cout << "Initializing perturbations with rc_arr, amp_arr, "
                  "rwidth_arr, mpoloidal_arr\n";
     for (int i = 0; i < this->lenntor; ++i) {
       std::cout << "itor=" << i << ", ntor=" << ntor1d[i]
                 << ", amp=" << amp_arr[i] << ", omega=" << omega_arr[i]
-                << ", rc1=" << rc1_arr[i] << ", rwidth=" << rwidth_arr[i]
                 << ", mpoloidal=[";
       for (size_t j = 0; j < mpoloidal_arr[i].size(); ++j) {
         std::cout << mpoloidal_arr[i][j];
         if (j != mpoloidal_arr[i].size() - 1)
           std::cout << ", ";
       }
-      std::cout << "]\n";
+      std::cout << "]"
+                << ", rc=[";
+      for (size_t j = 0; j < rc_arr[i].size(); ++j) {
+        std::cout << rc_arr[i][j];
+        if (j != rc_arr[i].size() - 1)
+          std::cout << ", ";
+      }
+      std::cout << "], rwidth=[";
+      for (size_t j = 0; j < rwidth_arr[i].size(); ++j) {
+        std::cout << rwidth_arr[i][j];
+        if (j != rwidth_arr[i].size() - 1)
+          std::cout << ", ";
+      }
+      std::cout << "], mpoloidal_amp=[";
+      for (size_t j = 0; j < mpoloidal_amp_arr[i].size(); ++j) {
+        std::cout << mpoloidal_amp_arr[i][j];
+        if (j != mpoloidal_amp_arr[i].size() - 1)
+          std::cout << ", ";
+      }
+      std::cout << "]"
+
+                << std::endl;
     }
   }
   // give a MHD perturbation delta A_//=i/omega* \partial_// delta Phi
   for (int itor = 0; itor < this->lenntor; ++itor) {
-    double rc1 = rc1_arr[itor];
+
     double amp_n = amp_arr[itor];
-    double rwidth = rwidth_arr[itor];
     double omega = omega_arr[itor];
     for (int impol = 0; impol < mpoloidal_arr[itor].size(); ++impol) {
       int mpoloidal = mpoloidal_arr[itor][impol];
+      double rc = rc_arr[itor][impol];
+      double rwidth = rwidth_arr[itor][impol];
+      double amp_nm = amp_n * mpoloidal_amp_arr[itor][impol];
 
       for (int j = 0; j < nthefem; ++j) {
         for (int i = 0; i < nradfem; ++i) {
@@ -262,7 +307,7 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
             radial_part = 0.0; // 边界条件
           } else {
             r = radmin + (i - 1) * drad;
-            radial_part = amp_n * std::exp(-std::pow((r - rc1) / rwidth, 2));
+            radial_part = amp_nm * std::exp(-std::pow((r - rc) / rwidth, 2));
           }
 
           // 角向复数部分

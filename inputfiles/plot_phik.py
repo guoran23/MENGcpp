@@ -12,6 +12,9 @@ themin = 0.0         # min theta (usually 0)
 themax = 2 * np.pi   # max theta
 amp = 0.002
 m = [10,11]
+m_amp= [1.0,0.9] # Amplitude for each m mode
+rc = [0.48,0.5] # Center radius for each m mode
+rwidth = [0.1,0.1] # Width of Gaussian for each m mode
 
 dtheta = (themax - themin) / nthefem  # poloidal step size
 
@@ -39,6 +42,11 @@ plt.title(f"phik (Re) for toroidal mode itor = {itor}")
 plt.tight_layout()
 plt.show()
 
+#Plot phik vs phik_2d_analytical
+phik_2d_analytical = np.zeros_like(phik_2d, dtype=np.complex_)
+for im, m_val in enumerate(m):
+    phik_2d_analytical += amp*m_amp[im] * np.exp(1j * m_val * Theta) * np.exp(-((R - rc[im]) / rwidth[im])**2)
+
 # === PHIK VS R + 高斯理论函数 ===
 
 # 选项1：固定一个 theta（如 theta = 0）
@@ -47,9 +55,8 @@ phik_fixed_theta = phik_2d[ith, :]
 
 # 选项2：对所有 theta 平均
 phik_avg_theta = np.mean(phik_2d, axis=0)
-
-# === 理论高斯函数 ===
-gauss_theory = amp * np.exp(-((r - 0.5) / 0.1)**2)
+# phik_analytical at ith
+gauss_theory = np.real(phik_2d_analytical[ith,:])  #amp * np.exp(-((r - 0.5) / 0.1)**2)
 
 # === 画图 ===
 plt.figure(figsize=(8, 5))
@@ -58,7 +65,7 @@ plt.plot(r, phik_fixed_theta.real, 'o-', label=f'phik_FEM at θ = {theta[ith]:.2
 plt.plot(r, gauss_theory, 'k-', label='Theoretical Gaussian')
 plt.xlabel('Radius r')
 plt.ylabel('Re[phik] / f(r)')
-plt.title('Comparison: phik(r) vs Gaussian')
+plt.title('Comparison: phik(r) vs Analytical Gaussian')
 plt.grid(True)
 plt.legend()
 plt.tight_layout()
@@ -67,9 +74,7 @@ plt.show()
 # plot phik at r=0.5
 ith = np.argmin(np.abs(r - 0.5))
 phik_at_r05 = phik_2d[:, ith]
-phik_at_r05_ana = np.zeros_like(theta)
-for im in m:
-    phik_at_r05_ana += amp * np.cos(im * theta)  # Add theoretical contribution for each mode
+phik_at_r05_ana = np.real(phik_2d_analytical[:, ith])
 # === PLOTTING PHIK AT R=0.5 ===
 plt.figure(figsize=(8, 5))
 plt.plot(theta, phik_at_r05.real, 'o-', label='phik at r=0.5')

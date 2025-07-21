@@ -26,8 +26,9 @@ Tf_norm = Tf/ Te
 vts = np.sqrt(Tf *1000* qe / (mass*mproton)) #m/s
 t_N = 1.0 / v_N
 v_A=  (B/(np.sqrt(munort*n0*massbk*mproton)))
+print("v_N [m/s] = {:.3e}".format(v_N))
 print("v_A [m/s] = {:.3e}".format(v_A))
-omega_N = 2.0 * np.pi /t_N
+omega_N = 1.0 /t_N
 omega_gy = zcharge * qe * B / (mass * mproton) #rad/s
 
 paux_T_transit = 2.0 * np.pi * q0 * Rmajor/ vts #s
