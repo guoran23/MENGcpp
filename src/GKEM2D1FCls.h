@@ -280,7 +280,8 @@ public:
     amp_with_phase.resize(lenntor, zero_c);
     fast_ossilation_phase.resize(lenntor, zero_c);
     for (int itor = 0; itor < lenntor; ++itor) {
-      fast_ossilation_phase[itor] = -i_c * (this->omega_0[itor] * time);
+      fast_ossilation_phase[itor] =
+          std::exp(-i_c * (this->omega_0[itor] * time)); 
       amp_with_phase[itor] =
           amp_in[itor] * fast_ossilation_phase[itor]; // 计算amplitude
     }
@@ -325,7 +326,6 @@ public:
     amp_tmp = fd.amplitude_arr; // 复制amplitude_arr到amp_tmp
     amp0 = fd.amplitude_arr;
 
-    std::vector<double> fast_ossilation_phase;
     std::vector<std::complex<double>> amp0_with_phase;
     std::vector<std::complex<double>> amp_with_phase_tmp;
     amp0_with_phase.resize(lenntor, zero_c);
