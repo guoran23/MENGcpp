@@ -26,9 +26,6 @@
 
 class Equilibrium {
 private:
-  double pressure;
-  double temperature;
-  double Btor;
   double aminor;
   double qbar_axis;
   double qbar_edge;
@@ -47,14 +44,8 @@ private:
   }
 
 public:
-  Equilibrium(double p, double t);
-  double getPressure() const;
-  double getTemperature() const;
   double getBref() const { return Bref; }
   void setBref(double B) { Bref = B; }
-
-  void adjustEquilibrium(double dPressure, double dTemperature);
-  void displayEquilibrium() const;
   // ---------------------------------------------------------
   // Constructor
   Equilibrium()
@@ -71,8 +62,8 @@ public:
       throw std::runtime_error("Error: Unable to open or parse input file '" +
                                inputFile + "'");
     }
-    std::cout << "eq readInput: "
-              << "Equilibrium" << std::endl;
+    std::cout << "eq readInput: " << inputFile
+              << "  Equilibrium" << std::endl;
     // Read key-value pairs
     iequmodel = reader.GetInteger("Equilibrium", "iequmodel", 2);
     c1adhoc = reader.GetReal("Equilibrium", "c1adhoc", 0.0);
@@ -92,8 +83,6 @@ public:
 
     rmaxis = rmaxis_adhoc;
     Bmaxis = Bmaxis_adhoc;
-
-    
 
     // Optional: Add validation and other logic
     validateInputs();

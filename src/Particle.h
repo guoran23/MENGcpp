@@ -358,34 +358,6 @@ public:
     return 0.0; // Placeholder
   }
 
-  // void particle_cls_init(Equilibrium &equ_in,
-  //                        std::optional<int> sp_id_in = std::nullopt) {
-  //   // 1. 处理sp_id
-  //   if (sp_id_in.has_value()) {
-  //     this->sp_id = sp_id_in.value();
-  //   } else {
-  //     this->sp_id = 0;
-  //   }
-
-  //   // 2. species_name 根据sp_id赋值
-  //   this->species_name = std::to_string(this->sp_id);
-
-  //   if (rank == 0) {
-  //     std::cout << "----initializing " << species_name << std::endl;
-  //   }
-
-  //   // 3.
-  //   this->particle_cls_link2eq(equ_in);
-  //   this->particle_cls_set_parms(equ_in, species, rank);
-  //   std::cout << "Finish particle_cls_set_parms...\n";
-  //   //========== Load Markers==================
-  //   this->particle_cls_loadmarker(equ_in, species);
-
-  //   std::cout << "Finish particle_cls_loadmarker...\n";
-  //   double Bax = abs(equ_in.Bmaxis);
-  //   this->particle_cls_track_init(0, Bax);
-  // }
-
   void particle_onestep_euler_0(Equilibrium &equ, ParticleCoords &dxvdt,
                                 double dt) {
 
@@ -607,6 +579,39 @@ public:
     }
   }
 
+  void particle_cls_record(const Equilibrium &equ) {
+
+    if (rank == 0) {
+      std::ostringstream oss;
+      oss << std::setw(3) << std::setfill('0') << sp_id;
+      std::string cfile = oss.str();
+      std::string filename = "data_particle" + cfile + ".txt";
+
+      std::cout << "----Record to " << filename << "----" << std::endl;
+
+      std::ofstream outfile(filename);
+      if (!outfile.is_open()) {
+        std::cerr << "Error: Cannot open file " << filename << std::endl;
+        return;
+      }
+       
+      for (int fidx = 0; fidx < nptot; ++fidx) {
+        double rad = coords.partrad[fidx];
+        double theta = coords.parttheta[fidx];
+        double r_val = equ.getR(rad, theta);
+        double z_val = equ.getZ(rad, theta);
+
+        outfile << std::scientific << std::setprecision(16)
+                << coords.partrad[fidx] << " " << coords.parttheta[fidx] << " "
+                << coords.partphitor[fidx] << " " << coords.partvpar[fidx]
+                << " " << partmu[fidx] << " " << coords.partw[fidx] << " "
+                << partfog[fidx] << " " << r_val << " " << z_val << std::endl;
+      }
+
+      outfile.close();
+    }
+  }
+
   void particle_cls_track_record(Equilibrium &equ, int irun) {
     // C++文件操作
     std::ofstream outfile;
@@ -747,7 +752,7 @@ public:
   std::string profilename;
   int ion_densprof;
   std::vector<double> ion_dens_coef1d = {0.49123, 0.298228, 0.198739,
-                                     0.0037567601019};
+                                         0.0037567601019};
   // std::vector<double> Tem_coef1d = {0.49123, 0.298228, 0.198739, 0.521298};
   // int iTemprof;
   // Assuming bspline_1d is a class or struct defined elsewhere
@@ -808,9 +813,10 @@ public:
       break;
     case 2:
       // ITPA ion density profile
-      var = 1.0 - ion_dens_coef1d[3] * std::exp(-ion_dens_coef1d[2] / ion_dens_coef1d[1] *
-                                            std::tanh((rad - ion_dens_coef1d[0]) /
-                                                      ion_dens_coef1d[2]));
+      var = 1.0 - ion_dens_coef1d[3] *
+                      std::exp(-ion_dens_coef1d[2] / ion_dens_coef1d[1] *
+                               std::tanh((rad - ion_dens_coef1d[0]) /
+                                         ion_dens_coef1d[2]));
       break;
     default:
       // 可选：处理未知情况
@@ -889,6 +895,32 @@ public:
       }
     }
   }
+  void writeProfiles(const int &rank) {
+    if (rank == 0) {
+      for (int isp = 0; isp < nsp; ++isp) {
+        auto &species = group.getSpecies(isp);
+        std::ostringstream oss;
+        oss << species.getSpId();
+        std::string species_id_str = oss.str();
+        std::string filename = "data_species_" + species_id_str + "_dens.txt";
+
+        std::ofstream outfile(filename); // default is std::ios::out
+        if (!outfile.is_open()) {
+          std::cerr << "Error opening file: " << filename << std::endl;
+          return;
+        }
+        for (int irad = 0; irad < 100; ++irad) {
+          double rad = irad * 0.01;
+          double dens = species.getdens1d(rad);
+          double dlndensdr = species.getdlndensdr1d(rad);
+          double tem_rad = species.getTem1d(rad);
+          outfile << std::scientific << std::setprecision(16) << rad << " "
+                  << dens << " " << dlndensdr << " " << tem_rad << std::endl;
+        }
+      } // isp loop
+      std::cout << "Profiles written successfully.\n";
+    } // rank == 0
+  }
 
   // Push particles by modifying their coordinates
   void pushParticle(size_t speciesIndex, double dt,
@@ -912,6 +944,8 @@ public:
     if (rank == 0) {
       std::cout << "Finish particle readInput...\n"
                 << "nsp =" << nsp << std::endl;
+      // diagnostic output
+      writeProfiles(rank);
     }
     // 2. Summay of particles
     std::cout << "On process: " << rank << ", Total particles of all species: "
@@ -925,6 +959,11 @@ public:
         this->particle_cls_set_parms(equ, species, rank);
         std::cout << "Finish particle_cls_set_parms...\n";
         this->particle_cls_loadmarker(equ, species, load_seed);
+        // record particle data
+        if (rank == 0) {
+          std::cout << "Finish particle_cls_loadmarker...\n";
+          species.particle_cls_record(equ);
+        }
       }
     }
   }
@@ -1051,21 +1090,6 @@ public:
     neocls = 0;
 
     // Set Run Parameters
-    // int ifile = 101;
-    // std::ifstream infile("input");
-    // if (!infile.is_open()) {
-    //   std::cerr << "Failed to open input file." << std::endl;
-    //   return;
-    // }
-    // for (int fic = 1; fic <= sp_id; ++fic) {
-    //   // Read namelist variables from file
-    //   // This requires parsing logic based on the file structure
-    //   // Placeholder for reading logic
-    // }
-    // infile.close();
-
-    // Todo: Read from input file
-    //       parameters for each species and parameters for all species
 
     // Marker
     int nptot = species.getNptot();

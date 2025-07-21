@@ -22,16 +22,6 @@ void setbuffcoef(const std::array<double, 2> &rminbuff,
                    coefminbuff[3] * std::pow(rminbuff[1], 3);
 }
 
-Field::Field(double strength) : fieldStrength(strength) {}
-
-double Field::getStrength() const { return fieldStrength; }
-
-void Field::setStrength(double strength) { fieldStrength = strength; }
-
-double Field::calculateForce(double charge) const {
-  return charge * fieldStrength;
-}
-
 // Definition of field_cls_init
 void FieldCls::field_cls_init(const Equilibrium &equ) {
   if (rank == 0) {

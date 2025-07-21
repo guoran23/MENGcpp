@@ -20,7 +20,9 @@ private:
 public:
   // 基本控制参数
   int *nstart = nullptr;
-  int nsp, imixvar, ipullback;
+  int nsp;
+  int imixvar = 0;
+  int ipullback = 0;
   bool nl_pt_perturbed, nl_fd_solve;
   bool irestart = false;
   int nrun, ischeme;
@@ -281,7 +283,7 @@ public:
     fast_ossilation_phase.resize(lenntor, zero_c);
     for (int itor = 0; itor < lenntor; ++itor) {
       fast_ossilation_phase[itor] =
-          std::exp(-i_c * (this->omega_0[itor] * time)); 
+          std::exp(-i_c * (this->omega_0[itor] * time));
       amp_with_phase[itor] =
           amp_in[itor] * fast_ossilation_phase[itor]; // 计算amplitude
     }
@@ -522,7 +524,7 @@ public:
       }
 
       gkem_cls_record(i + 1);
-      time_now += dtoTN; // 更新时间 
+      time_now += dtoTN; // 更新时间
     }
     if (rank == 0) {
       std::cout << "Test completed." << std::endl;
@@ -643,7 +645,8 @@ void GKEM2D1FCls::gkem_cls_initialize() {
 
   if (rank == 0) {
     std::cout << ">> nsp = " << nsp << std::endl;
-    std::cout << ">> Background mass_bk = " << mass_bk << std::endl;
+    std::cout << ">> Background mass_bk = " << mass_bk
+              << ", ion_densprof = " << pt->ion_densprof << std::endl;
     std::cout << ">> ntotfem2d1f = " << fd.getNtotfem2d1f() << std::endl;
 
     printf("----solve initial NJAP----\n");
