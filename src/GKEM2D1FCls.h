@@ -322,6 +322,8 @@ public:
       dxv_sum[fsc].initialize(nptot); // dxv_sum initialize to 0.0
       xv0[fsc] = species.getCoords(); // xv0= pt
     }
+    std::fill(damp_sum.begin(), damp_sum.end(), zero_c);
+
     std::vector<std::complex<double>> amp_tmp;
     amp_tmp = fd.amplitude_arr; // 复制amplitude_arr到amp_tmp
     amp0 = fd.amplitude_arr;
