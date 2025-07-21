@@ -342,12 +342,12 @@ public:
 };
 
 int main(int argc, char **argv) {
-  TestCls test(argc, argv);
-  test.run();
-  test.testParticle();
-  test.testSplineNd();
-  test.testField();
-  return 0;
+  // TestCls test(argc, argv);
+  // test.run();
+  // test.testParticle();
+  // test.testSplineNd();
+  // test.testField();
+  // return 0;
 
   GKEM2D1FCls gkem2d1f(argc, argv);
   // gkem2d1f.testParticle();

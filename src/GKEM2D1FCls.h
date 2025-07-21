@@ -492,6 +492,7 @@ public:
     // 测试函数
     if (rank == 0) {
       std::cout << "Testing GKEM2D1FCls with nrun = " << nrun << std::endl;
+      std::cout << "dtoTN = " << dtoTN << std::endl;
       if (rank == 0) {
         std::cout << "Initial amplitude---." << std::endl;
         std::cout << "amplitude_arr: ";
@@ -530,6 +531,7 @@ public:
     // 测试函数
     if (rank == 0) {
       std::cout << "Testing GKEM2D1FCls with nrun = " << nrun << std::endl;
+      std::cout << "dtoTN = " << dtoTN << std::endl;
       if (rank == 0) {
         std::cout << "Initial amplitude---." << std::endl;
         std::cout << "amplitude_arr: ";
@@ -569,7 +571,7 @@ void GKEM2D1FCls::gkem_cls_readInput(const std::string &inputFile) {
   std::cout << "GKEM2D1FCls readInput: " << inputFile << std::endl;
   // Read key-value pairs
   nrun = reader.GetInteger("MENG", "nrun", 2);
-  dtoTN = reader.GetReal("MENG", " dtoTN", 0.01);
+  this->dtoTN = reader.GetReal("MENG", "dtoTN", 0.01);
   itest = reader.GetInteger("MENG", "itest", 0);
 }
 void GKEM2D1FCls::gkem_cls_initialize() {

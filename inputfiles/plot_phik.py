@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 # === CONFIGURATION ===
 filename = "data_phik_initial.txt"
 lenntor = 1          # number of toroidal modes (adjust as needed)
-nradfem = 12         # number of radial FEM nodes (adjust as needed)
-nthefem = 24        # number of poloidal FEM nodes (adjust as needed)
+nradfem = 22         # number of radial FEM nodes (adjust as needed)
+nthefem = 64        # number of poloidal FEM nodes (adjust as needed)
 radmin = 0.2         # min radius
 radmax = 0.8         # max radius
 themin = 0.0         # min theta (usually 0)
 themax = 2 * np.pi   # max theta
 amp = 0.002
+m = [10,11]
 
 dtheta = (themax - themin) / nthefem  # poloidal step size
 
@@ -62,9 +63,26 @@ plt.grid(True)
 plt.legend()
 plt.tight_layout()
 plt.show()
+# %%
+# plot phik at r=0.5
+ith = np.argmin(np.abs(r - 0.5))
+phik_at_r05 = phik_2d[:, ith]
+phik_at_r05_ana = np.zeros_like(theta)
+for im in m:
+    phik_at_r05_ana += amp * np.cos(im * theta)  # Add theoretical contribution for each mode
+# === PLOTTING PHIK AT R=0.5 ===
+plt.figure(figsize=(8, 5))
+plt.plot(theta, phik_at_r05.real, 'o-', label='phik at r=0.5')
+plt.plot(theta, phik_at_r05_ana.real, 'k-', label='Theoretical phik at r=0.5')
+plt.xlabel('Poloidal angle θ (rad)')
+plt.ylabel('Re[phik]')
+plt.title(f'phik at r = 0.5, m={m}')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
 
-
-
+# %%
 # === R, THETA GRIDS ===
 X = R * np.cos(Theta)
 Y = R * np.sin(Theta)
