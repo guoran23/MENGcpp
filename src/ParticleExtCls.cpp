@@ -86,77 +86,13 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
   double ffac = zcharge / mass;
   double cc1 = rhoN * mass * Bref / zcharge * std::sqrt(2.0);
 
-  std::vector<double> pt1ddPdrad, pt1ddPdthe, pt1ddPdphi;
-  std::vector<double> pt1ddAdrad, pt1ddAdthe, pt1ddAdphi;
-  std::vector<double> pt1ddAhdrad, pt1ddAhdthe, pt1ddAhdphi;
-  std::vector<double> pt1ddAsdt, pt1dAorAh, pt1dtmp;
-  std::vector<double> rho1arr, ptB1d;
-
   // 2d1f push EM particle dynamics
-
-  if (this->batch_g2p) {
-    pt1ddPdrad.resize(nptot);
-    pt1ddPdthe.resize(nptot);
-    pt1ddPdphi.resize(nptot);
-    pt1ddAdrad.resize(nptot);
-    pt1ddAdthe.resize(nptot);
-    pt1ddAdphi.resize(nptot);
-    pt1ddAhdrad.resize(nptot);
-    pt1ddAhdthe.resize(nptot);
-    pt1ddAhdphi.resize(nptot);
-    pt1ddAsdt.resize(nptot);
-    pt1dAorAh.resize(nptot);
-    pt1dtmp.resize(nptot);
-    rho1arr.resize(nptot);
-    ptB1d.resize(nptot);
-
-    // 计算B场
-    for (int fic = 0; fic < nptot; ++fic) {
-      ptB1d[fic] = equ.getB(partrad0[fic], parttheta0[fic]);
-    }
-
-    // 计算rho
-    for (int i = 0; i < nptot; ++i) {
-      rho1arr[i] = cc1 * std::sqrt(partmu0[i] / ptB1d[i]);
-    }
-
-    { // 2D1F
-
-      // Phi梯度
-      fd.field_cls_g2p2d1f_grad(equ, phik_c, ntor1d, amp, partrad0, parttheta0,
-                                partphitor0, pt1ddPdrad, pt1ddPdthe, pt1ddPdphi,
-                                ngyro, rho1arr);
-
-      // A梯度
-      fd.field_cls_g2p2d1f_grad(equ, apark_c, ntor1d, amp, partrad0, parttheta0,
-                                partphitor0, pt1ddAdrad, pt1ddAdthe, pt1ddAdphi,
-                                ngyro, rho1arr);
-
-      //   if (this->imixvar == 0)
-      {
-        // A for v pullback
-        fd.field_cls_g2p2d1f_general(
-            equ, apark_c, ntor1d, amp, partrad0, parttheta0, partphitor0,
-            pt1dAorAh, std::array<int, 3>{0, 0, 1}, ngyro, rho1arr);
-
-        // Ah梯度无需求
-        std::fill(pt1ddAhdrad.begin(), pt1ddAhdrad.end(), 0.0);
-        std::fill(pt1ddAhdthe.begin(), pt1ddAhdthe.end(), 0.0);
-        std::fill(pt1ddAhdphi.begin(), pt1ddAhdphi.end(), 0.0);
-
-        // E_parallel无需求
-        std::fill(pt1ddAsdt.begin(), pt1ddAsdt.end(), 0.0);
-      }
-    }
-  }
-
   // Initialization
   draddt.assign(nptot, 0.0);
   dthetadt.assign(nptot, 0.0);
   dphitordt.assign(nptot, 0.0);
   dvpardt.assign(nptot, 0.0);
   dwdt.assign(nptot, 0.0);
-  //
 
   // Main particle loop
   for (int fic = 0; fic < nptot; ++fic) {
@@ -194,12 +130,6 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     double JB_inv = 1.0 / (ptB * ptjaco3);
     // --calc. Gyro
     double rho1 = cc1 * std::sqrt(ptmu / ptB);
-
-    if (this->batch_g2p) {
-      ptdAdrad = pt1ddAdrad[fic];
-      ptdAdthe = pt1ddAdthe[fic];
-      ptdAdphi = pt1ddAdphi[fic];
-    }
 
     fd.field_cls_g2p2d1f_grad(equ, apark_c, ntor1d, amp, ptrad, pttheta,
                               ptphitor, ptdAdrad, ptdAdthe, ptdAdphi, ngyro,
@@ -348,17 +278,9 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     double ptCEthe = ptCE * equ.getdpsidr(ptrad) / std::pow(ptB * ptRR, 2);
     double ptCEphi = ptCE * ptFF / (ptjaco3 * std::pow(ptB, 2));
 
-    if (this->batch_g2p) {
-      ptdPdrad = pt1ddPdrad[fic];
-      ptdPdthe = pt1ddPdthe[fic];
-      ptdPdphi = pt1ddPdphi[fic];
-      // pttmp = pt1dtmp[fic];  //
-    } else {
-
-      fd.field_cls_g2p2d1f_grad(equ, phik_c, ntor1d, amp, ptrad, pttheta,
-                                ptphitor, ptdPdrad, ptdPdthe, ptdPdphi, ngyro,
-                                rho1);
-    }
+    fd.field_cls_g2p2d1f_grad(equ, phik_c, ntor1d, amp, ptrad, pttheta,
+                              ptphitor, ptdPdrad, ptdPdthe, ptdPdphi, ngyro,
+                              rho1);
 
     double ptdPdpar = (ptBthe_ct * ptdPdthe + ptBphi_ct * ptdPdphi) / ptB;
     double ptdAdpar = (ptBthe_ct * ptdAdthe + ptBphi_ct * ptdAdphi) / ptB;

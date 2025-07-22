@@ -48,6 +48,7 @@ public:
   std::vector<std::complex<double>> amp0, damp_sum, dampdt;
   std::vector<std::complex<double>> denskMkj_tot, jparkMkj_tot;
   double particle_tot_Energy = 0.0;
+  double particle_tot_pert_Energy = 0.0;
 
   // 计时
   double t1 = 0.0, t2 = 0.0;
@@ -137,6 +138,7 @@ public:
   void calc_particle_tot_Energy() {
     // 计算粒子总能量
     particle_tot_Energy = 0.0;
+    particle_tot_pert_Energy = 0.0;
     for (int fsc = 0; fsc < nsp; ++fsc) {
       ParticleSpecies &species = this->pt->group.getSpecies(fsc);
       ParticleCoords &coords = species.getCoords();
@@ -147,14 +149,15 @@ public:
         double ptenergy = species.getMass() *
                           (coords.partvpar[fic] * coords.partvpar[fic] / 2 +
                            species.partmu[fic] * ptB);
-        particle_tot_Energy += ptenergy * coords.partw[fic];
+        particle_tot_pert_Energy += ptenergy * coords.partw[fic];
+        particle_tot_Energy += ptenergy * species.partfog[fic];
       }
     }
     // MPI
-    double global_particle_tot_Energy = 0.0;
-    MPI_Allreduce(&particle_tot_Energy, &global_particle_tot_Energy, 1,
-                  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    particle_tot_Energy = global_particle_tot_Energy;
+    MPI_Allreduce(MPI_IN_PLACE, &particle_tot_Energy, 1, MPI_DOUBLE, MPI_SUM,
+                  MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &particle_tot_pert_Energy, 1, MPI_DOUBLE,
+                  MPI_SUM, MPI_COMM_WORLD);
   }
 
   void write_particle_tot_Energy(int irun) {
@@ -170,7 +173,7 @@ public:
       outfile.open(sfile, std::ios::app);
 
     outfile << std::scientific << std::setprecision(15) << particle_tot_Energy
-            << std::endl;
+            << " " << particle_tot_pert_Energy << std::endl;
     outfile.close();
   }
 
@@ -610,7 +613,7 @@ public:
       // if (rank == 0) {
       //   std::cout << "Step " << i + 1 << " completed." << std::endl;
       //   std::cout << std::endl;
-      // } 
+      // }
       gkem_cls_record(i + 1);
     }
     if (rank == 0) {

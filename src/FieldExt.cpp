@@ -158,6 +158,8 @@ void FieldExtCls::init(const Equilibrium &equ, Particle &pt) {
   this->phik.resize(this->ntotfem2d1f);
   this->jparkMkj.resize(this->ntotfem2d1f);
   this->apark.resize(this->ntotfem2d1f);
+  this->amplitude_arr.assign(
+      lenntor, std::complex<double>(0.0, 0.0)); // Default amplitude
 
   // Initialize perturbation fields==0
   for (int i = 0; i < this->ntotfem2d1f; ++i) {
@@ -168,7 +170,6 @@ void FieldExtCls::init(const Equilibrium &equ, Particle &pt) {
   }
   // Initialize Ana Gauss perturbation fields
   initializePerturbations(equ);
-  this->amplitude_arr.assign(lenntor, std::complex<double>(1.0, 0.0)); // Default amplitude
 }
 
 void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
@@ -243,6 +244,9 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
   }
   //
   this->omega0 = omega_arr; // Store omega0 for later use
+  for (size_t i = 0; i < amp_arr.size(); ++i) {
+    this->amplitude_arr[i] = std::complex<double>(amp_arr[i], 0.0);
+  }
 
   if (rank == 0) {
     std::cout << "Initializing perturbations with rc_arr, amp_arr, "
@@ -282,14 +286,12 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
   }
   // give a MHD perturbation delta A_//=i/omega* \partial_// delta Phi
   for (int itor = 0; itor < this->lenntor; ++itor) {
-
-    double amp_n = amp_arr[itor];
     double omega = omega_arr[itor];
     for (int impol = 0; impol < mpoloidal_arr[itor].size(); ++impol) {
       int mpoloidal = mpoloidal_arr[itor][impol];
       double rc = rc_arr[itor][impol];
       double rwidth = rwidth_arr[itor][impol];
-      double amp_nm = amp_n * mpoloidal_amp_arr[itor][impol];
+      double amp_nm = mpoloidal_amp_arr[itor][impol];
 
       for (int j = 0; j < nthefem; ++j) {
         for (int i = 0; i < nradfem; ++i) {

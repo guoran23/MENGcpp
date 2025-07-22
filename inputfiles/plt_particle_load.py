@@ -26,7 +26,7 @@ def plot_all_variables(data, spid):
         ax.grid(True)
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig(f"particle_vars_{spid}.png", dpi=300)
+    # plt.savefig(f"particle_vars_{spid}.png", dpi=300)
     plt.show()
 
 def plot_phase_space_projections(data, spid):
@@ -86,7 +86,7 @@ def plot_phase_space_projections(data, spid):
     axs[1, 2].axis('off')
 
     plt.tight_layout(rect=[0, 0, 1, 0.95])
-    plt.savefig(f"phase_space_species_{spid}.png", dpi=300)
+    # plt.savefig(f"phase_space_species_{spid}.png", dpi=300)
     plt.show()
 
 def main():

@@ -57,7 +57,7 @@ def plot_profiles(directory="."):
         plt.grid(True)
 
         plt.tight_layout()
-        plt.savefig(f"profile_species_{spid}.png")
+        # plt.savefig(f"profile_species_{spid}.png")
         plt.show()
 
 if __name__ == "__main__":
