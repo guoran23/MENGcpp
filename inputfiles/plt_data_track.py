@@ -49,6 +49,9 @@ for fic in range(ntrack):
     axes[0].plot(data["partR"][:, fic], data["partZ"][:, fic])
 axes[0].plot(var1["Rbbbs"], var1["Zbbbs"], 'r--')
 axes[0].set_aspect('equal')
+axes[0].grid(True)               # 显示主网格线
+axes[0].minorticks_on()   
+axes[0].grid(True, which='minor', linestyle=':', linewidth=0.5, alpha=0.6)
 axes[0].set_xlabel("R")
 axes[0].set_ylabel("Z")
 
@@ -79,6 +82,9 @@ axes[5].set_title(r"$P_{\phi}$")
 # Variable E
 axes[6].plot(data["partE"])
 axes[6].set_title("E")
+# Variable rad
+axes[7].plot(data["partrad"])
+axes[7].set_title("rad")
 
 plt.tight_layout()
 plt.show()

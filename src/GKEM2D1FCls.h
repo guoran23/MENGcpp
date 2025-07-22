@@ -47,6 +47,7 @@ public:
   std::vector<ParticleCoords> xv0, dxv_sum, dxvdt;
   std::vector<std::complex<double>> amp0, damp_sum, dampdt;
   std::vector<std::complex<double>> denskMkj_tot, jparkMkj_tot;
+  double particle_tot_Energy = 0.0;
 
   // 计时
   double t1 = 0.0, t2 = 0.0;
@@ -79,11 +80,12 @@ public:
 
   void gkem_cls_record(int irun) {
     int irun_rec = irun + *nstart;
-
+    calc_particle_tot_Energy(); // 计算粒子总能量
     // 写amplitude数据
     if (rank == 0) {
       write_amplitude(irun);
       write_omega1(irun);
+      write_particle_tot_Energy(irun);
       // 写粒子轨迹数据（假设变量都已经准备好）
       for (int fsc = 0; fsc < nsp; ++fsc) {
         ParticleSpecies &species = this->pt->group.getSpecies(fsc);
@@ -129,6 +131,46 @@ public:
       outfile << std::scientific << std::setprecision(15) << omg1 << " ";
     }
     outfile << std::endl;
+    outfile.close();
+  }
+
+  void calc_particle_tot_Energy() {
+    // 计算粒子总能量
+    particle_tot_Energy = 0.0;
+    for (int fsc = 0; fsc < nsp; ++fsc) {
+      ParticleSpecies &species = this->pt->group.getSpecies(fsc);
+      ParticleCoords &coords = species.getCoords();
+      int nptot = species.getNptot();
+
+      for (int fic = 0; fic < nptot; ++fic) {
+        double ptB = equ.getB(coords.partrad[fic], coords.parttheta[fic]);
+        double ptenergy = species.getMass() *
+                          (coords.partvpar[fic] * coords.partvpar[fic] / 2 +
+                           species.partmu[fic] * ptB);
+        particle_tot_Energy += ptenergy * coords.partw[fic];
+      }
+    }
+    // MPI
+    double global_particle_tot_Energy = 0.0;
+    MPI_Allreduce(&particle_tot_Energy, &global_particle_tot_Energy, 1,
+                  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    particle_tot_Energy = global_particle_tot_Energy;
+  }
+
+  void write_particle_tot_Energy(int irun) {
+    if (rank != 0)
+      return;
+
+    std::string sfile = "particle_tot_energy.txt";
+    std::ofstream outfile;
+
+    if (irun == 0 && !irestart)
+      outfile.open(sfile, std::ios::out);
+    else
+      outfile.open(sfile, std::ios::app);
+
+    outfile << std::scientific << std::setprecision(15) << particle_tot_Energy
+            << std::endl;
     outfile.close();
   }
 
@@ -208,8 +250,8 @@ public:
                              const std::vector<std::complex<double>> &amp,
                              const std::vector<ParticleCoords> &dxvdt) {
     // 计算delta omega
-
-    std::vector<std::complex<double>> TTT_tmp(lenntor, std::complex<double>(0.0, 0.0));
+    std::vector<std::complex<double>> TTT_tmp(lenntor,
+                                              std::complex<double>(0.0, 0.0));
     std::fill(TTT.begin(), TTT.end(), std::complex<double>(0.0, 0.0));
     for (int fsc = 0; fsc < nsp; ++fsc) {
       ParticleSpecies &species = this->pt->group.getSpecies(fsc);
@@ -421,7 +463,8 @@ public:
     double dt1o6 = dt / 6.0;
     double dt2o6 = dt * 2.0 / 6.0;
     constexpr std::complex<double> zero_c(0.0, 0.0);
-    std::vector<std::complex<double>> amp_tmp(lenntor, zero_c), amp_with_phase(lenntor, zero_c);
+    std::vector<std::complex<double>> amp_tmp(lenntor, zero_c),
+        amp_with_phase(lenntor, zero_c);
 
     for (int fsc = 0; fsc < nsp; ++fsc) {
       ParticleSpecies &species = pt->group.getSpecies(fsc);
@@ -567,7 +610,7 @@ public:
       // if (rank == 0) {
       //   std::cout << "Step " << i + 1 << " completed." << std::endl;
       //   std::cout << std::endl;
-      // }
+      // } 
       gkem_cls_record(i + 1);
     }
     if (rank == 0) {

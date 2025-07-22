@@ -168,7 +168,7 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     double ptw = partw0[fic];
     double ptfog = partfog0[fic];
 
-    if (ptrad < this->rmin || ptrad > this->rmax) {
+    if (ptrad < fd.radmin || ptrad > fd.radmax) {
       draddt[fic] = 0.0;
       dthetadt[fic] = 0.0;
       dphitordt[fic] = 0.0;
