@@ -8,13 +8,11 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f_2sp(
     const std::vector<std::complex<double>> &amp,
     std::vector<ParticleCoords> &dxvdt) {
 
-  std::vector<ParticleCoords> xv0;
-  std::vector<std::vector<double>> partmu0_allsp;
-  std::vector<std::vector<double>> partfog0_allsp;
   int nsp = this->getNsp();
-  xv0.resize(nsp);
-  partmu0_allsp.resize(nsp);
-  partfog0_allsp.resize(nsp);
+  std::vector<ParticleCoords> xv0(nsp);
+  std::vector<std::vector<double>> partmu0_allsp(nsp);
+  std::vector<std::vector<double>> partfog0_allsp(nsp);
+
   for (int fsc = 0; fsc < nsp; ++fsc) {
     ParticleSpecies &species = this->group.getSpecies(fsc);
     int nptot = species.getNptot();

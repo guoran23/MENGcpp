@@ -275,8 +275,7 @@ void FieldCls::field_cls_g2p2d1f_general(
 
   size_t np = ptrad1d.size();
   ptf1d.assign(np, 0.0); // Initialize ptf1d to zeros
-  std::vector<std::complex<double>> f1d_amp;
-  f1d_amp.resize(ntotfem2d1f, 0.0);
+  std::vector<std::complex<double>> f1d_amp(ntotfem2d1f, 0.0);
   for (int itor = 0; itor < ntor1d.size(); ++itor) {
     for (int ifem = 0; ifem < ntot12fem; ++ifem) {
       int idx = ifem + itor * ntot12fem;

@@ -52,7 +52,7 @@ public:
   double rmaj;
 
   // Grid
-  int Nphimult = 2;
+  int Nphimult = 1;
   int bc_arr[3] = {1, 0, 0};
   int nrad = 12, nthe = 32, nphi = 8;
   double radmin = 0.1, themin = 0.0, phimin = 0.0;

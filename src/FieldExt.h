@@ -29,7 +29,8 @@ public:
   // Constructor & Destructor
   FieldExtCls() {
     std::cout << "FieldExtCls default constructor called" << std::endl;
-  };
+  }
+  
   ~FieldExtCls() = default;
 
   // Methods

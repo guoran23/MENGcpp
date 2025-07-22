@@ -14,7 +14,7 @@ SplineCubicNdCls::SplineCubicNdCls() : ndim(0), norder(4), nl_debug(false) {
     // Default constructor initialization
     MPIManager &mpiManager = MPIManager::getInstance(); // 获取MPIManager的实例
     rank = mpiManager.getRank(); // 获取当前进程的rank
-    size = mpiManager.getSize(); // 获取总的进程数};
+    size = mpiManager.getSize(); // 获取总的进程数
   }
   
   void SplineCubicNdCls::initialize1d(const std::vector<double> &knots) {

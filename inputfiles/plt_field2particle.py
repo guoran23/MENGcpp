@@ -5,7 +5,7 @@ from compare_derivative import compare_derivative
 # === Parameter Setup ===
 Nrad = 20
 Nthe = 64
-Nphi = 32
+Nphi = 16
 n = 6
 m = [10, 11] # not used in plot
 

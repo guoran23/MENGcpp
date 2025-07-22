@@ -160,7 +160,7 @@ public:
 
   double nphieachfa = 4; // note: can be non-integer; set to 4 for cubic
   int nphi = 7;          // toroidal grid #
-  int nphiMult = 2;      // torus wedge factor
+  int nphiMult = 1;      // torus wedge factor
   double phimaxfull = 2 * M_PI, phimin = 0.0;
   double phimax, phiwid, dphi;
   double phimin_fa, phimax_fa, dphi_fa;

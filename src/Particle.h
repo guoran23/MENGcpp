@@ -741,7 +741,7 @@ public:
   bool irestart = false;
 
   double phitormin = 0.0, phitormax, phitorwid;
-  int Nphimult = 2; // 1/Nphimult torus
+  int Nphimult = 1; // 1/Nphimult torus
   // double nsonN = 1.0;
   // double Tem = 1.0;
 

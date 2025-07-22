@@ -168,16 +168,15 @@ void FieldExtCls::init(const Equilibrium &equ, Particle &pt) {
   }
   // Initialize Ana Gauss perturbation fields
   initializePerturbations(equ);
-  this->amplitude_arr.resize(this->lenntor);
-  this->amplitude_arr.assign(this->lenntor, 1.0); // Default amplitude
+  this->amplitude_arr.assign(lenntor, std::complex<double>(1.0, 0.0)); // Default amplitude
 }
 
 void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
   double dtheta = 2 * M_PI / nthe; // periodic in theta
   double drad = (radmax - radmin) / (nrad - 1);
   if (rank == 0) {
-    std::cout << "----Initializing perturbations with nthe=" << nthe
-              << ", nrad=" << nrad << std::endl;
+    std::cout << "----Initializing perturbations with nrad=" << nrad
+              << ", nthe=" << nthe << std::endl;
     std::cout << "radmin=" << radmin << ", radmax=" << radmax
               << ", themin=" << themin << ", themax=" << themax << std::endl;
     std::cout << "drad=" << drad << ", dtheta=" << dtheta << std::endl;
