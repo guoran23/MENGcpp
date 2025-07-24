@@ -2,27 +2,29 @@
 void FieldExtCls::field_ext_cls_calc_W(
     std::vector<double> &WWW, const Equilibrium &equ, Particle &pt,
     const std::vector<std::complex<double>> &phik_c,
-    const std::vector<int> &ntor1d,
-    const std::vector<std::complex<double>> &amp) {
+    const std::vector<int> &ntor1d) {
   int nsp = pt.getNsp();
   int nrad = this->nrad;
   int nthe = this->nthe;
   double rmax = this->radmax;
   double rmin = this->radmin;
+  double Bref = equ.getBref();
   lenntor = ntor1d.size();
   WWW.assign(lenntor, 0.0);
-  double mass = pt.mass_bk;
+  double mass_ion = pt.mass_bk;
+  std::vector<std::complex<double>> amp_1(lenntor,
+                                          std::complex<double>(1.0, 0.0));
 
-  std::vector<double> xrad(nrad), wrad(nrad);
-  std::vector<double> xthe(nthe), wthe(nthe);
-  UtilMath::lgwt(nrad, rmin, rmax, xrad, wrad);
+  std::vector<double> xrad(100), wrad(100);
+  std::vector<double> xthe(200), wthe(200);
+  UtilMath::lgwt(100, rmin, rmax, xrad, wrad);
   double twopi = 2.0 * M_PI;
-  UtilMath::lgwt(nthe, 0.0, twopi, xthe, wthe);
+  UtilMath::lgwt(200, 0.0, twopi, xthe, wthe);
   // Nested loop for computation
   double volume = 0.0;
   double int_dens = 0.0;
-  for (int fic = 0; fic < nrad; ++fic) {
-    for (int fjc = 0; fjc < nthe; ++fjc) {
+  for (int fic = 0; fic < 100; ++fic) {
+    for (int fjc = 0; fjc < 200; ++fjc) {
       double w12 = wrad[fic] * wthe[fjc];
       double ptrad = xrad[fic];
       double ptthe = xthe[fjc];
@@ -35,7 +37,7 @@ void FieldExtCls::field_ext_cls_calc_W(
       double jaco3 = ptjaco2 * ptRR;
 
       std::vector<std::complex<double>> dfdrad_c, dfdthe_c, dfdphi_c;
-      field_cls_g2p2d1f_grad_complex(equ, phik_c, ntor1d, amp, ptrad, ptthe,
+      field_cls_g2p2d1f_grad_complex(equ, phik_c, ntor1d, amp_1, ptrad, ptthe,
                                      ptphi, dfdrad_c, dfdthe_c, dfdphi_c, 1,
                                      0.0);
 
@@ -50,7 +52,7 @@ void FieldExtCls::field_ext_cls_calc_W(
                  dfdrad_c[itor].imag() * dfdthe_c[itor].imag()) +
             ptg22 * std::norm(dfdthe_c[itor]);
 
-        nabla_perp_phi *= mass * dens_rad / (ptB2);
+        nabla_perp_phi *= mass_ion * dens_rad / (ptB2);
         WWW[itor] += nabla_perp_phi * w12 * jaco3;
       }
 
@@ -59,7 +61,7 @@ void FieldExtCls::field_ext_cls_calc_W(
 
   for (int itor = 0; itor < lenntor; ++itor) {
     // integrate over toroidal angle
-    WWW[itor] *= M_PI;
+    WWW[itor] *= M_PI  * Bref * Bref;
   }
 }
 
@@ -402,6 +404,68 @@ void FieldExtCls::field_ext_cls_test(const Equilibrium &equ,
                                       std::array<int, 3>{0, 0, 1}, 1, prho);
           } else if (igradient == 1) {
             field_cls_g2p2d1f_grad(equ, phik, ntor1d, amp, ptrad, ptthe, ptphi,
+                                   dfdrad, dfdthe, dfdphi, 1, prho);
+          }
+
+          equ.calcBJgij(ptrad[0], ptthe[0], ptRR[0], ptZZ[0], ptB[0],
+                        ptdBdrad[0], ptdBdthe[0], ptBthe_ct[0], ptBphi_ct[0],
+                        ptjaco2[0], ptFF[0], ptg11[0], ptg12[0], ptg22[0]);
+
+          dfdpar[0] =
+              (ptBthe_ct[0] * dfdthe[0] + ptBphi_ct[0] * dfdphi[0]) / ptB[0];
+
+          out << std::setw(10) << ptrad[0] << std::setw(10) << ptthe[0]
+              << std::setw(10) << ptphi[0] << std::setw(10) << ptRR[0]
+              << std::setw(10) << ptZZ[0] << std::setw(10) << ff[0]
+              << std::setw(10) << dfdrad[0] << std::setw(10) << dfdthe[0]
+              << std::setw(10) << dfdphi[0] << std::setw(10) << dfdpar[0]
+              << '\n';
+        }
+      }
+    }
+  }
+  // write apark and gradient
+  if (rank == 0) {
+    std::ofstream out("data_field2particle_apark.txt");
+    out << std::scientific << std::setprecision(2);
+    out << std::setw(10) << "ptrad" << std::setw(10) << "ptthe" << std::setw(10)
+        << "ptphi" << std::setw(10) << "ptRR" << std::setw(10) << "ptZZ"
+        << std::setw(10) << "ptf1d" << std::setw(10) << "dfdrad"
+        << std::setw(10) << "dfdthe" << std::setw(10) << "dfdphi"
+        << std::setw(10) << "dfdpar" << '\n';
+
+    for (int i3 = 0; i3 < spc.getNnodeArr()[2]; ++i3) {
+      for (int i2 = 0; i2 < spc.getNnodeArr()[1]; ++i2) {
+        for (int i1 = 0; i1 < spc.getNnodeArr()[0]; ++i1) {
+          std::vector<double> ptrad(1, spc.get_z1d1()[i1]);
+          std::vector<double> ptthe(1, spc.get_z1d2()[i2]);
+          std::vector<double> ptphi(1, spc.get_z1d3()[i3]);
+          std::vector<double> prho(1, 0.0);
+
+          std::vector<double> ff(1), dfdrad(1), dfdthe(1), dfdphi(1), dfdpar(1);
+          std::vector<double> ptRR(1), ptZZ(1), ptB(1), ptdBdrad(1),
+              ptdBdthe(1);
+          std::vector<double> ptBthe_ct(1), ptBphi_ct(1), ptjaco2(1), ptFF(1),
+              ptg11(1), ptg12(1), ptg22(1);
+
+          // std::cout << "ptrad=" << ptrad[0] << ", ptthe=" << ptthe[0]
+          // << ", ptphi=" << ptphi[0] << '\n';
+          field_cls_g2p2d1f_general(equ, apark, ntor1d, amp, ptrad, ptthe,
+                                    ptphi, ff, std::array<int, 3>{0, 0, 0}, 1,
+                                    prho);
+
+          if (igradient == 0) {
+            field_cls_g2p2d1f_general(equ, apark, ntor1d, amp, ptrad, ptthe,
+                                      ptphi, dfdrad,
+                                      std::array<int, 3>{1, 0, 0}, 1, prho);
+            field_cls_g2p2d1f_general(equ, apark, ntor1d, amp, ptrad, ptthe,
+                                      ptphi, dfdthe,
+                                      std::array<int, 3>{0, 1, 0}, 1, prho);
+            field_cls_g2p2d1f_general(equ, apark, ntor1d, amp, ptrad, ptthe,
+                                      ptphi, dfdphi,
+                                      std::array<int, 3>{0, 0, 1}, 1, prho);
+          } else if (igradient == 1) {
+            field_cls_g2p2d1f_grad(equ, apark, ntor1d, amp, ptrad, ptthe, ptphi,
                                    dfdrad, dfdthe, dfdphi, 1, prho);
           }
 

@@ -170,7 +170,7 @@ public:
 
   // 3.1 physics variables
   int isource_ref = 1;
-  double rhoN, betaN, nref, Tref;
+  double rhoN, betaN, nref, Tref, vN;
 
   // methods
   void equil_cls_init();

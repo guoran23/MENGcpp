@@ -40,6 +40,6 @@ def plot_omega1_evolution(omega1_arr):
 
 
 if __name__ == "__main__":
-    filename = "omega1.txt"  # 改成你的输出文件名
+    filename = "data_omega1.txt"  # 改成你的输出文件名
     omega1_arr = load_omega1_data(filename)
     plot_omega1_evolution(omega1_arr)

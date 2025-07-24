@@ -65,7 +65,7 @@ def plot_amplitude_evolution(amplitude_arr):
     plt.show()
 
 if __name__ == "__main__":
-    filename = "amplitude.txt"  # 修改为你的文件名
+    filename = "data_Amplitude.txt"  # 修改为你的文件名
     amplitude_arr = load_amplitude_data(filename)
     if amplitude_arr.size > 0:
         plot_amplitude_evolution(amplitude_arr)

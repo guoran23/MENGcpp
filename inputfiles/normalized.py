@@ -7,6 +7,7 @@ Te=1.0 #[kev]
 mass = 2.0 # EP mass [mp]
 freq = 4.1*100 /2.0/ np.pi #[kHz]
 B = 3.0 #[T]
+B_ref = 3.0 #[T]
 zcharge = 1.0 # EP charge
 Rmajor = 10.0 #[m]
 q0= 1.7 # safety factor
@@ -21,6 +22,8 @@ qe = 1.60217662e-19 #C
 munort = 1.25663706143591729e-6# [H/m]
 
 #
+B_N = 1
+
 v_N = np.sqrt(2.0 * Te *1000* qe / mproton) #m/s
 Tf_norm = Tf/ Te
 vts = np.sqrt(Tf *1000* qe / (mass*mproton)) #m/s

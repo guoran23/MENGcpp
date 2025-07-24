@@ -306,8 +306,7 @@ public:
     std::vector<double> WWW;
     WWW.assign(fd_ext.ntor1d.size(), 0.0); //
 
-    fd_ext.field_ext_cls_calc_W(WWW, equ, particle, fd_ext.phik, fd_ext.ntor1d,
-                                fd_ext.amplitude_arr);
+    fd_ext.field_ext_cls_calc_W(WWW, equ, particle, fd_ext.phik, fd_ext.ntor1d);
     // Print the calculated WWW
     std::cout << "Calculated WWW: [";
     for (size_t i = 0; i < WWW.size(); ++i) {

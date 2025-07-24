@@ -44,8 +44,10 @@ public:
   std::vector<std::complex<double>> omega;
   std::vector<double> omega_0;
   std::vector<std::complex<double>> omega_1;
+  // for RK methods
   std::vector<ParticleCoords> xv0, dxv_sum, dxvdt;
   std::vector<std::complex<double>> amp0, damp_sum, dampdt;
+
   std::vector<std::complex<double>> denskMkj_tot, jparkMkj_tot;
   double particle_tot_Energy = 0.0;
   double particle_tot_pert_Energy = 0.0;
@@ -101,7 +103,7 @@ public:
     if (rank != 0)
       return;
 
-    std::string sfile = "amplitude.txt";
+    std::string sfile = "data_Amplitude.txt";
     std::ofstream outfile;
 
     if (irun == 0 && !irestart)
@@ -120,7 +122,7 @@ public:
     if (rank != 0)
       return;
 
-    std::string sfile = "omega1.txt";
+    std::string sfile = "data_omega1.txt";
     std::ofstream outfile;
 
     if (irun == 0 && !irestart)
@@ -316,10 +318,11 @@ public:
     // }
 
     // 计算omega
+    double rhoN = equ.rhoN;
     for (int i = 0; i < lenntor; ++i) {
-      omega_1_out[i] =
-          std::complex<double>(0.0, 1.0) * TTT[i] / 2.0 / WWW[i]; // 计算omega_1
-                                                                  // 更新omega
+      omega_1_out[i] = std::complex<double>(0.0, 1.0) * TTT[i] / 2.0 / WWW[i] /
+                       std::norm(amp[i]); // 计算omega_1
+      omega_1_out[i] = omega_1_out[i] / rhoN / rhoN;
     }
   }
 
@@ -704,7 +707,7 @@ void GKEM2D1FCls::gkem_cls_initialize() {
   dampdt.resize(lenntor, std::complex<double>(0.0, 0.0));
 
   // Calculate the WWW vector
-  fd.field_ext_cls_calc_W(WWW, equ, *pt, fd.phik, fd.ntor1d, fd.amplitude_arr);
+  fd.field_ext_cls_calc_W(WWW, equ, *pt, fd.phik, fd.ntor1d);
   // Print the calculated WWW
   std::cout << "Calculated WWW: [";
   for (size_t i = 0; i < WWW.size(); ++i) {

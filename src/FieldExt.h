@@ -42,8 +42,7 @@ public:
   field_ext_cls_calc_W(std::vector<double> &WWW, const Equilibrium &equ,
                        Particle &pt,
                        const std::vector<std::complex<double>> &phik_c,
-                       const std::vector<int> &ntor1d,
-                       const std::vector<std::complex<double>> &amplitude_arr);
+                       const std::vector<int> &ntor1d);
   void field_ext_cls_calc_T_oneSpecies(
       std::vector<std::complex<double>> &TTT, const Equilibrium &equ,
       ParticleSpecies &species, const std::vector<double> &partrad0,

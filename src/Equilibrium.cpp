@@ -79,10 +79,12 @@ void Equilibrium::equil_cls_calc_derived(int rank) {
         std::sqrt(2.0 * mass_unit * Tref * charge_unit) / (charge_unit * Bref);
     betaN = (vth * vth) / (vA * vA);
   }
+  this->vN = vth; // save vN for use
 
   if (rank == 0) {
-    std::cout << ">> vA=" << vA << ", vth=" << vth << ", rhoN=" << rhoN
-              << ", betaN=" << betaN << ", nref=" << nref << ", Tref=" << Tref
+    std::cout << ">> vA=" << vA << "[m/s], v_N=" << vth
+              << "[m/s], rhoN=" << rhoN << ", betaN=" << betaN
+              << ", nref=" << nref << "[/m^3], Tref=" << Tref << "[eV]"
               << std::endl;
   }
 }
@@ -195,7 +197,8 @@ void Equilibrium::calcBJgij(double rad, double the0, double &RR, double &ZZ,
                             double &FF, double &g11, double &g12,
                             double &g22) const {
   // input rad, the0
-  double the = UtilMath::modulo(the0, 2 * M_PI); // Modulo operation to wrap the angle
+  double the =
+      UtilMath::modulo(the0, 2 * M_PI); // Modulo operation to wrap the angle
   double drdR, drdZ, dtdR, dtdZ;
 
   // Call to another member function

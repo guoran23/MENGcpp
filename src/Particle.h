@@ -281,9 +281,9 @@ public:
     }
   }
   int getIdwdt() const { return idwdt; } // 0: no dwdt, 1: dwdt
-  void setIdwdt(int v) {
-    if (v == 0 || v == 1) {
-      idwdt = v; // 0: no dwdt, 1: dwdt
+  void setIdwdt(int dwdtchoice) {
+    if (dwdtchoice == 0 || dwdtchoice == 1) {
+      idwdt = dwdtchoice; // 0: no dwdt, 1: dwdt
     } else {
       std::cerr << "Error: idwdt must be 0 or 1." << std::endl;
       std::abort();
@@ -1196,13 +1196,6 @@ public:
     }
 
     Nphimult = Nphimult;
-    // Control variables
-    // v_par0 = v_par0;
-    // v_d = v_d;
-    // v_mirror = v_mirror;
-    // v_ExB = v_ExB;
-    // v_Epar = v_Epar;
-    // idwdt = idwdt;
 
     irec_track = irec_track;
     irec_Eparticle = irec_Eparticle;
