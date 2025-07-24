@@ -222,11 +222,10 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
                                  ngyro, rho1);
 
     // ptvparph = ptvpar-zcharge/mass*ptAh;
-    double ptvparph = ptvpar; // Ah=0, only As
+    // double ptvparph = ptvpar; // Ah=0, only As
 
     // === Part 1: Equilibrium motion ===
     // d(x0 + x_d) / dt and dvpar0/dt
-
     // ---- 1. dx/dt contribution from v_par ----
     double ptvpar0_draddt = ptvpar * bstar_rad_ct;
     double ptvpar0_dthedt = ptvpar * bstar_the_ct;
@@ -276,7 +275,7 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     }
 
     double ptCEthe = ptCE * equ.getdpsidr(ptrad) / std::pow(ptB * ptRR, 2);
-    double ptCEphi = ptCE * ptFF / (ptjaco3 * std::pow(ptB, 2));
+    double ptCEphi = ptCE * ptFF / (ptjaco3 * ptB * ptB);
 
     fd.field_cls_g2p2d1f_grad(equ, phik_c, ntor1d, amp, ptrad, pttheta,
                               ptphitor, ptdPdrad, ptdPdthe, ptdPdphi, ngyro,
@@ -285,10 +284,10 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     double ptdPdpar = (ptBthe_ct * ptdPdthe + ptBphi_ct * ptdPdphi) / ptB;
     double ptdAdpar = (ptBthe_ct * ptdAdthe + ptBphi_ct * ptdAdphi) / ptB;
 
-    double ptdPAdrad = ptdPdrad - ptvparph * ptdAdrad;
-    double ptdPAdthe = ptdPdthe - ptvparph * ptdAdthe;
-    double ptdPAdphi = ptdPdphi - ptvparph * ptdAdphi;
-    double ptdPAdpar = ptdPdpar - ptvparph * ptdAdpar;
+    double ptdPAdrad = ptdPdrad - ptvpar * ptdAdrad;
+    double ptdPAdthe = ptdPdthe - ptvpar * ptdAdthe;
+    double ptdPAdphi = ptdPdphi - ptvpar * ptdAdphi;
+    double ptdPAdpar = ptdPdpar - ptvpar * ptdAdpar;
 
     double ptEB_draddt = -ptCEthe * ptg11 * ptdPAdphi + ptCEphi * ptdPAdthe;
 
@@ -314,7 +313,6 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     if (ideltaf != 2 && species.getvEpar() != 0) {
       dvpardt[fic] = dvpardt[fic] + ptdvpardt1;
     }
-    // ====Weight
     // ====Weight====
     double ptwfac, ptdvpardt_tot;
     double pt_draddt, pt_dthedt, pt_dphidt;
@@ -383,15 +381,13 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
 
       double ptTem = species.getTem1d(ptrad);
       double ptTfac = mass / ptTem * (ptvpar * ptvpar + 2.0 * ptmu * ptB) - 1.5;
-
-      dwdt[fic] +=
-          (2.0 * ptvpar * ptdvpardt_tot * mass / ptTem -
-           pt_draddt * (species.getdlndensdr1d(ptrad) +
-                        ptTfac * species.getdlnTemdr1d(ptrad) -
-                        2.0 * mass * ptmu / ptTem *
-                            ptdBdrad) // Note 2/T is from TN = mN*vN^2/2
-           + 2.0 * pt_dthedt * mass * ptmu / ptTem * ptdBdthe) *
-          ptwfac;
+      // Note 2/T is from TN = mN*vN^2/2
+      dwdt[fic] += (2.0 * ptvpar * ptdvpardt_tot * mass / ptTem -
+                    pt_draddt * (species.getdlndensdr1d(ptrad) +
+                                 ptTfac * species.getdlnTemdr1d(ptrad) -
+                                 2.0 * mass * ptmu / ptTem * ptdBdrad) +
+                    2.0 * pt_dthedt * mass * ptmu / ptTem * ptdBdthe) *
+                   ptwfac;
 
       if (this->isrcsnk != 0) {
         dwdt[fic] += ptw * species.get_fsrcsnk(ptrad);

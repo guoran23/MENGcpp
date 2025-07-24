@@ -82,8 +82,12 @@ def plot_phase_space_projections(data, spid):
     axs[1, 1].set_title("theta vs phitor")
     axs[1, 1].grid(True)
 
-    # 最后一张子图空着，清除刻度
-    axs[1, 2].axis('off')
+    # 6. fog vs rad
+    axs[1, 2].scatter(rad,fog,s=2,alpha=0.5)
+    axs[1, 2].set_xlabel("r")
+    axs[1, 2].set_ylabel("f/g")
+    axs[1, 2].set_title("f/g vs r")
+    axs[1, 2].grid(True)
 
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     # plt.savefig(f"phase_space_species_{spid}.png", dpi=300)

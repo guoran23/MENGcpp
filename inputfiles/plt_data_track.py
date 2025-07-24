@@ -85,6 +85,7 @@ axes[6].set_title("E")
 # Variable rad
 axes[7].plot(data["partrad"])
 axes[7].set_title("rad")
-
+#
+axes[8].plot(data["partPcan"][:,2])
 plt.tight_layout()
 plt.show()

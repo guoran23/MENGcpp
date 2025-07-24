@@ -44,6 +44,7 @@ public:
   std::vector<std::complex<double>> omega;
   std::vector<double> omega_0;
   std::vector<std::complex<double>> omega_1;
+  std::vector<std::complex<double>> amp_with_phase_diag;
   // for RK methods
   std::vector<ParticleCoords> xv0, dxv_sum, dxvdt;
   std::vector<std::complex<double>> amp0, damp_sum, dampdt;
@@ -87,6 +88,7 @@ public:
     // 写amplitude数据
     if (rank == 0) {
       write_amplitude(irun);
+      write_amp_with_phase(irun);
       write_omega1(irun);
       write_particle_tot_Energy(irun);
       // 写粒子轨迹数据（假设变量都已经准备好）
@@ -99,42 +101,34 @@ public:
     }
   }
 
-  void write_amplitude(int irun) {
+  template <typename Container>
+  void write_data(const std::string &filename, const Container &data,
+                  int irun) {
     if (rank != 0)
       return;
 
-    std::string sfile = "data_Amplitude.txt";
     std::ofstream outfile;
-
     if (irun == 0 && !irestart)
-      outfile.open(sfile, std::ios::out);
+      outfile.open(filename, std::ios::out);
     else
-      outfile.open(sfile, std::ios::app);
+      outfile.open(filename, std::ios::app);
 
-    for (const auto &amp : fd.amplitude_arr) {
-      outfile << std::scientific << std::setprecision(15) << amp << " ";
+    for (const auto &val : data) {
+      outfile << std::scientific << std::setprecision(15) << val << " ";
     }
     outfile << std::endl;
     outfile.close();
   }
+  void write_amplitude(int irun) {
+    write_data("data_Amplitude.txt", fd.amplitude_arr, irun);
+  }
 
   void write_omega1(int irun) {
-    if (rank != 0)
-      return;
+    write_data("data_omega1.txt", this->omega_1, irun);
+  }
 
-    std::string sfile = "data_omega1.txt";
-    std::ofstream outfile;
-
-    if (irun == 0 && !irestart)
-      outfile.open(sfile, std::ios::out);
-    else
-      outfile.open(sfile, std::ios::app);
-
-    for (const auto &omg1 : this->omega_1) {
-      outfile << std::scientific << std::setprecision(15) << omg1 << " ";
-    }
-    outfile << std::endl;
-    outfile.close();
+  void write_amp_with_phase(int irun) {
+    write_data("data_amp_with_phase.txt", this->amp_with_phase_diag, irun);
   }
 
   void calc_particle_tot_Energy() {
@@ -237,10 +231,11 @@ public:
     }
   }
 
-  void print_omega1(const std::vector<std::complex<double>> &omega_1_tmp,
-                    int rank) {
+  void print_complex_vec(const std::string &name,
+                         const std::vector<std::complex<double>> &omega_1_tmp,
+                         int rank) {
     if (rank == 0) {
-      std::cout << "omega_1: ";
+      std::cout << name;
       for (const auto &val : omega_1_tmp) {
         std::cout << std::scientific << std::setprecision(15) << "("
                   << val.real() << "," << val.imag() << " i ) ";
@@ -290,39 +285,17 @@ public:
         std::cout << "Rank " << rank << " | TTT[" << i << "] = " << TTT[i]
                   << " (invalid) at step " << std::endl;
       }
-
-      // if (std::abs(WWW[i]) < 1e-12 || !std::isfinite(WWW[i])) {
-      //   std::cout << "Rank " << rank << " | WWW[" << i << "] = " << WWW[i]
-      //             << " (invalid) at step " << std::endl;
-      // }
     }
-
-    // for (int i = 0; i < lenntor; ++i) {
-    //   {
-    //     std::cout << "before MPI sum calculated T: " << std::endl;
-    //     std::cout << "Rank " << rank << " | TTT[" << i << "] = " << TTT[i]
-    //               << std::endl;
-    //   }
-    // }
 
     // MPI 通信
     MPI_Allreduce(MPI_IN_PLACE, TTT.data(), lenntor, MPI_DOUBLE_COMPLEX,
                   MPI_SUM, MPI_COMM_WORLD);
-
-    // for (int i = 0; i < lenntor; ++i) {
-    //   {
-    //     std::cout << "after MPI sum calculated T: " << std::endl;
-    //     std::cout << "Rank " << rank << " | TTT[" << i << "] = " << TTT[i]
-    //               << std::endl;
-    //   }
-    // }
-
     // 计算omega
     double rhoN = equ.rhoN;
     for (int i = 0; i < lenntor; ++i) {
       omega_1_out[i] = std::complex<double>(0.0, 1.0) * TTT[i] / 2.0 / WWW[i] /
                        std::norm(amp[i]); // 计算omega_1
-      omega_1_out[i] = omega_1_out[i] / rhoN / rhoN;
+      omega_1_out[i] = omega_1_out[i] / rhoN / rhoN * 10.0;
     }
   }
 
@@ -353,11 +326,11 @@ public:
     }
   }
 
-  void add_dAdt(std::vector<std::complex<double>> &amp_tmp,
+  void add_dAdt(std::vector<std::complex<double>> &A_out,
                 const std::vector<std::complex<double>> &dAdt,
                 const double dt) {
-    for (size_t itor = 0; itor < amp_tmp.size(); ++itor) {
-      amp_tmp[itor] += dAdt[itor] * dt;
+    for (size_t itor = 0; itor < A_out.size(); ++itor) {
+      A_out[itor] += dAdt[itor] * dt;
     }
   }
 
@@ -398,6 +371,8 @@ public:
     std::vector<std::complex<double>> amp_with_phase_tmp(lenntor, zero_c);
     calc_amp_with_phase(amp0_with_phase, amp0, time_now);
     amp_with_phase_tmp = amp0_with_phase;
+    // print_complex_vec("amp0_with_phase", amp0_with_phase, 0);
+    this->amp_with_phase_diag = amp0_with_phase;
     std::vector<std::complex<double>> omega_1_tmp(lenntor, zero_c);
 
     // Step 1, at t = 0
@@ -489,7 +464,7 @@ public:
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
 
     gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp_with_phase, dxvdt);
-    print_omega1(omega_1_tmp, rank);
+    print_complex_vec("omega_1", omega_1_tmp, rank);
 
     // Step 2
     pt->particle_add_coords2sp(*pt, dxvdt, dthalf);
@@ -538,6 +513,7 @@ public:
 
     std::vector<std::complex<double>> amp0_with_phase(lenntor, zero_c);
     calc_amp_with_phase(amp0_with_phase, amp0, time_now);
+    this->amp_with_phase_diag = amp0_with_phase;
 
     // Step 1
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
@@ -705,6 +681,7 @@ void GKEM2D1FCls::gkem_cls_initialize() {
   amp0.resize(lenntor, std::complex<double>(0.0, 0.0));
   damp_sum.resize(lenntor, std::complex<double>(0.0, 0.0));
   dampdt.resize(lenntor, std::complex<double>(0.0, 0.0));
+  amp_with_phase_diag.resize(lenntor, std::complex<double>(0.0, 0.0));
 
   // Calculate the WWW vector
   fd.field_ext_cls_calc_W(WWW, equ, *pt, fd.phik, fd.ntor1d);

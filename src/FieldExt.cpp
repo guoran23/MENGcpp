@@ -115,9 +115,9 @@ void FieldExtCls::field_ext_cls_calc_T_oneSpecies(
 
     for (int itor = 0; itor < lenntor; ++itor) {
       // Calculate the perturbation term
-      std::complex<double> i(0.0, 1.0);
+      constexpr std::complex<double> i_c(0.0, 1.0);
       std::complex<double> phase_factor(0.0, 0.0);
-      phase_factor = std::exp(-i * static_cast<double>(ntor1d[itor]) * ptphi);
+      phase_factor = std::exp(-i_c * static_cast<double>(ntor1d[itor]) * ptphi);
       TTT[itor] += ptw * phase_factor *
                    (ptdraddt * std::conj(dfdrad_c[itor]) +
                     ptdthedt * std::conj(dfdthe_c[itor]));
