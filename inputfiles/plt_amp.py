@@ -38,31 +38,31 @@ def load_amplitude_data(filename):
 def plot_amplitude_evolution(amplitude_arr):
     n_steps, n_modes = amplitude_arr.shape
 
-    # Plot magnitude over time
-    plt.figure(figsize=(10, 6))
+    fig, axs = plt.subplots(1, 2, figsize=(14, 6))  # 1行2列子图
+
+    # 左图：振幅随时间的变化（semilogy）
     for mode in range(n_modes):
         amp_mag = np.abs(amplitude_arr[:, mode])
-        plt.semilogy(range(n_steps), (amp_mag), label=f'Mode {mode}')
-    plt.xlabel("Time Step")
-    plt.ylabel("Amplitude Magnitude")
-    plt.title("Evolution of Mode Amplitudes")
-    plt.legend()
-    plt.grid(True)
+        axs[0].semilogy(range(n_steps), amp_mag, label=f'Mode {mode}')
+    axs[0].set_xlabel("Time Step")
+    axs[0].set_ylabel("Amplitude Magnitude")
+    axs[0].set_title("Evolution of Mode Amplitudes")
+    axs[0].legend()
+    axs[0].grid(True)
+
+    # 右图：复平面轨迹
+    for mode in range(n_modes):
+        axs[1].plot(range(n_steps), amplitude_arr[:, mode].real, label=f'Re Amp Mode {mode}')
+        axs[1].plot(range(n_steps), amplitude_arr[:, mode].imag, label=f'Im Amp Mode {mode}')
+    axs[1].set_xlabel("Time step")
+    axs[1].set_ylabel("Amp")
+    axs[1].set_title("Amplitude Re & Im")
+    axs[1].legend()
+    axs[1].grid(True)
+
     plt.tight_layout()
     plt.show()
 
-    # Plot complex trajectory
-    plt.figure(figsize=(6, 6))    
-    for mode in range(n_modes):
-        plt.plot(amplitude_arr[:, mode].real, amplitude_arr[:, mode].imag, label=f'Mode {mode}')
-    plt.xlabel("Re")
-    plt.ylabel("Im")
-    plt.title("Amplitude Complex Trajectories")
-    plt.axis("equal")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
 
 if __name__ == "__main__":
     filename = "data_Amplitude.txt"  # 修改为你的文件名

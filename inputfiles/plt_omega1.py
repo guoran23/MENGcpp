@@ -29,7 +29,9 @@ def plot_omega1_evolution(omega1_arr):
     plt.figure(figsize=(10, 6))
     for mode in range(n_modes):
         omg1_Im = np.imag(omega1_arr[:, mode])
-        plt.plot(range(n_steps), omg1_Im, label=f'Mode {mode}')
+        omg1_Re = np.real(omega1_arr[:, mode])
+        plt.plot(range(n_steps), omg1_Im, label=f'Im Mode {mode}')
+        plt.plot(range(n_steps), omg1_Re, label=f'Re Mode {mode}')
     plt.xlabel("Time Step")
     plt.ylabel("Im(omega1)")
     plt.title("Evolution of Mode Im(omega1_n)")
