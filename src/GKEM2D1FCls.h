@@ -32,6 +32,7 @@ public:
   int lenntor;   // ntor1d.size()
   int itest = 0; // 0: test particle motion
                  // 1: euler, 2: rk4
+  bool idiag_dxvdt;
 
   // 物理对象
   Equilibrium equ;
@@ -91,6 +92,11 @@ public:
       write_amp_with_phase(irun);
       write_omega1(irun);
       write_particle_tot_Energy(irun);
+
+      if (idiag_dxvdt) {
+      write_species_particles("data_xv0_", xv0, irun);
+      write_species_particles("data_dxvdt_", dxvdt, irun);
+      }
       // 写粒子轨迹数据（假设变量都已经准备好）
       for (int fsc = 0; fsc < nsp; ++fsc) {
         ParticleSpecies &species = this->pt->group.getSpecies(fsc);
@@ -227,6 +233,31 @@ public:
       }
 
       // 关闭文件
+      outfile.close();
+    }
+  }
+  void write_species_particles(const std::string &prefix,
+                               const std::vector<ParticleCoords> &species_data,
+                               int irun) {
+    for (size_t sp = 0; sp < species_data.size(); ++sp) {
+      const auto &p = species_data[sp];
+
+      // 构建文件名，例如 data_xv0_0.txt
+      std::string filename = prefix + "SP_" + std::to_string(sp) + ".txt";
+      std::ofstream outfile;
+
+      if (irun == 0)
+        outfile.open(filename, std::ios::out);
+      else
+        outfile.open(filename, std::ios::app);
+
+      size_t np = p.partrad.size(); // 假设所有分量长度相等
+      for (size_t i = 0; i < np; ++i) {
+        outfile << std::scientific << std::setprecision(15) << p.partrad[i]
+                << " " << p.parttheta[i] << " " << p.partphitor[i] << " "
+                << p.partvpar[i] << " " << p.partw[i] << "\n";
+      }
+
       outfile.close();
     }
   }
@@ -617,6 +648,7 @@ void GKEM2D1FCls::gkem_cls_readInput(const std::string &inputFile) {
   nrun = reader.GetInteger("MENG", "nrun", 2);
   this->dtoTN = reader.GetReal("MENG", "dtoTN", 0.01);
   itest = reader.GetInteger("MENG", "itest", 0);
+  idiag_dxvdt = reader.GetBoolean("MENG","idiag_dxvdt",false);
 }
 
 void GKEM2D1FCls::gkem_cls_initialize() {

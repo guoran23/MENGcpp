@@ -119,7 +119,6 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     double ptdBdrad, ptdBdthe;
     double ptjaco2, ptFF, ptg11, ptg12, ptg22;
     double ptdAdrad, ptdAdthe, ptdAdphi;
-    double ptA;
     double ptEB_dphidt;
 
     // Magnetic field calculations
@@ -194,12 +193,13 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       bstarAs_phi_ct =
           bstar_phi_ct + JB_inv * (ptdAdthe * ptBrad_co - ptdAdrad * ptBthe_co);
 
-      // 对bstar进行归一化
+      // 对bstar进行归一化  ${\boldsymbol b}^*_0$
       bstar_rad_ct = bstar_rad_ct / BBstar_abs;
       bstar_the_ct = bstar_the_ct / BBstar_abs;
       bstar_phi_ct = bstar_phi_ct / BBstar_abs;
 
       // 对bstarAs进行归一化
+      // bstarAs 包含 As项，是总的b*
       bstarAs_rad_ct = bstarAs_rad_ct / BBstar_abs;
       bstarAs_the_ct = bstarAs_the_ct / BBstar_abs;
       bstarAs_phi_ct = bstarAs_phi_ct / BBstar_abs;
@@ -210,16 +210,11 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       bstar1_rad_ct = bstarAs_rad_ct - bstar_rad_ct;
       bstar1_the_ct = bstarAs_the_ct - bstar_the_ct;
       bstar1_phi_ct = bstarAs_phi_ct - bstar_phi_ct;
-      // bstarAs 包含 As项，是总的b*
+      //b*-b, b equilibrium part
       bstar_minus_b_rad_ct = bstarAs_rad_ct;
       bstar_minus_b_the_ct = bstarAs_the_ct - ptBthe_ct / ptB;
       bstar_minus_b_phi_ct = bstarAs_phi_ct - ptBphi_ct / ptB;
     }
-
-    //// === 调用场（field）插值 ===
-    fd.field_cls_g2p2d1f_general(equ, apark_c, ntor1d, amp, ptrad, pttheta,
-                                 ptphitor, ptA, std::array<int, 3>{0, 0, 0},
-                                 ngyro, rho1);
 
     // ptvparph = ptvpar-zcharge/mass*ptAh;
     // double ptvparph = ptvpar; // Ah=0, only As
@@ -290,7 +285,6 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     double ptdPAdpar = ptdPdpar - ptvpar * ptdAdpar;
 
     double ptEB_draddt = -ptCEthe * ptg11 * ptdPAdphi + ptCEphi * ptdPAdthe;
-
     double ptEB_dthedt = -ptCEthe * ptg12 * ptdPAdphi - ptCEphi * ptdPAdrad;
 
     if (ideltaf != 2 && species.getvExB() != 0) {
