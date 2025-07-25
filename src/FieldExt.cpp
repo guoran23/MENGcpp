@@ -65,70 +65,7 @@ void FieldExtCls::field_ext_cls_calc_W(
   }
 }
 
-// calculate T for the particles
-void FieldExtCls::field_ext_cls_calc_T_oneSpecies(
-    std::vector<std::complex<double>> &TTT, const Equilibrium &equ,
-    ParticleSpecies &species, const std::vector<double> &partrad0,
-    const std::vector<double> &parttheta0,
-    const std::vector<double> &partphitor0,
-    const std::vector<double> &partvpar0, const std::vector<double> &partw0,
-    const std::vector<double> &draddt, const std::vector<double> &dthetadt,
-    const std::vector<double> &dphitordt, const std::vector<double> &dvpardt,
-    const std::vector<double> &dwdt, const int icase,
-    const std::vector<std::complex<double>> &phik_c,
-    const std::vector<int> &ntor1d,
-    const std::vector<std::complex<double>> &amp) {
 
-  int lenntor = ntor1d.size();
-
-  std::complex<double> zero_c(0.0, 0.0);
-  TTT.assign(lenntor, zero_c); // Initialize TTT with complex zeros
-  int nptot = species.getNptot();
-  if (partrad0.size() != nptot || parttheta0.size() != nptot ||
-      partphitor0.size() != nptot || partw0.size() != nptot ||
-      draddt.size() != nptot || dthetadt.size() != nptot ||
-      dphitordt.size() != nptot || dvpardt.size() != nptot) {
-    std::cerr << "Error: Particle data size mismatch." << std::endl;
-    return;
-  }
-
-  double zcharge = species.getCharge();
-  double Cp2g = species.getCp2g();
-  // Particle loop for deposition
-  for (int fic = 0; fic < nptot; ++fic) {
-    double ptrad = partrad0[fic];
-    double ptthe = parttheta0[fic];
-    double ptphi = partphitor0[fic];
-    double ptw = partw0[fic];
-
-    double ptdraddt = draddt[fic];
-    double ptdthedt = dthetadt[fic];
-    double ptdphidt = dphitordt[fic];
-
-    if (ptrad < this->radmin || ptrad > this->radmax) {
-      continue;
-    }
-
-    std::vector<std::complex<double>> dfdrad_c, dfdthe_c, dfdphi_c;
-    field_cls_g2p2d1f_grad_complex(equ, phik_c, ntor1d, amp, ptrad, ptthe,
-                                   ptphi, dfdrad_c, dfdthe_c, dfdphi_c, 1, 0.0);
-
-    for (int itor = 0; itor < lenntor; ++itor) {
-      // Calculate the perturbation term
-      constexpr std::complex<double> i_c(0.0, 1.0);
-      std::complex<double> phase_factor(0.0, 0.0);
-      phase_factor = std::exp(-i_c * static_cast<double>(ntor1d[itor]) * ptphi);
-      TTT[itor] += ptw * phase_factor *
-                   (ptdraddt * std::conj(dfdrad_c[itor]) +
-                    ptdthedt * std::conj(dfdthe_c[itor]));
-    }
-
-  } // nptot
-
-  for (int itor = 0; itor < lenntor; ++itor) {
-    TTT[itor] *= Cp2g * zcharge;
-  }
-}
 
 // Implementation of init() method
 void FieldExtCls::init(const Equilibrium &equ, Particle &pt) {

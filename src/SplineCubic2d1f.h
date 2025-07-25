@@ -180,7 +180,7 @@ public:
                              const std::vector<double> &pphi1d,
                              std::vector<double> &pdfdrad1d,
                              std::vector<double> &pdfdthe1d,
-                             std::vector<double> &pdfdphi1d) {
+                             std::vector<double> &pdfdphi1d) const {
     int dimrad{0}, dimthe{1};
     std::vector<double> fNrad0_arr(4, 0.0), fNrad1_arr(4, 0.0);
     double fNthe0, fNthe1;
@@ -224,7 +224,7 @@ public:
       const std::vector<double> &pthe1d, const std::vector<double> &pphi1d,
       std::vector<std::complex<double>> &pdfdrad1d_c,
       std::vector<std::complex<double>> &pdfdthe1d_c,
-      std::vector<std::complex<double>> &pdfdphi1d_c) {
+      std::vector<std::complex<double>> &pdfdphi1d_c) const {
     int dimrad{0}, dimthe{1};
     std::vector<double> fNrad0_arr(4, 0.0), fNrad1_arr(4, 0.0);
     double fNthe0, fNthe1;
@@ -360,7 +360,7 @@ public:
       }
     }
   }
-  double spc_cls_get_fbas_ix(int ibas, double x, int idiff, int idirec) {
+  double spc_cls_get_fbas_ix(int ibas, double x, int idiff, int idirec) const {
     // idirec: 0--rad, 1--the
     // ibas: 1,2,3,...,nfem_arr[idirec]
     // idiff: 0--fbas, 1--dfbas/d coord
@@ -394,7 +394,7 @@ public:
     return 0.0;
   }
 
-  double spc_cls_fbas_in(double x, int idiff) {
+  double spc_cls_fbas_in(double x, int idiff) const {
     if (x >= -2.0 && x < -1.0) {
       return (idiff == 0) ? (4.0 / 3.0 + 2 * x + x * x + x * x * x / 6.0)
                           : (2.0 + 2.0 * x + x * x / 2.0);
@@ -411,14 +411,14 @@ public:
     return 0.0;
   }
 
-  double spc_cls_fbas_ed(double x, int idiff, int iedge, bool nl_left) {
+  double spc_cls_fbas_ed(double x, int idiff, int iedge, bool nl_left) const {
     double var = nl_left ? spc_cls_fbas_ed_left(x, idiff, iedge)
                          : spc_cls_fbas_ed_left(-x, idiff, iedge) *
                                ((idiff == 0) ? 1.0 : -1.0);
     return var;
   }
 
-  double spc_cls_fbas_ed_left(double x, int idiff, int iedge) {
+  double spc_cls_fbas_ed_left(double x, int idiff, int iedge) const {
     if (iedge == 1) {
       if (x >= 1.0 && x <= 2.0) {
         return (idiff == 0) ? (8.0 - 12.0 * x + 6.0 * x * x - x * x * x)

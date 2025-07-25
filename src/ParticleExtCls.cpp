@@ -1,14 +1,19 @@
 #include "ParticleExtCls.h"
 
 void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f_2sp(
-    Equilibrium &equ, FieldCls &fd,
+    const Equilibrium &equ, const FieldCls &fd,
     const std::vector<std::complex<double>> &phik,
     const std::vector<std::complex<double>> &apark,
     const std::vector<int> &ntor1d,
     const std::vector<std::complex<double>> &amp,
-    std::vector<ParticleCoords> &dxvdt) {
+    std::vector<ParticleCoords> &dxvdt,
+    std::vector<std::complex<double>> &TTT_allsp) {
 
   int nsp = this->getNsp();
+  int lenntor = ntor1d.size();
+  constexpr std::complex<double> zero_c(0.0, 0.0);
+  TTT_allsp.resize(lenntor, zero_c);
+
   std::vector<ParticleCoords> xv0(nsp);
   std::vector<std::vector<double>> partmu0_allsp(nsp);
   std::vector<std::vector<double>> partfog0_allsp(nsp);
@@ -28,17 +33,18 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f_2sp(
   }
 
   for (int fsc = 0; fsc < getNsp(); ++fsc) {
-
+    std::vector<std::complex<double>> T_onesp(lenntor, zero_c);
     particle_ext_cls_dxvpardt123EM2d1f(
         fsc, equ, fd, phik, apark, fd.ntor1d, amp, xv0[fsc].partrad,
         xv0[fsc].parttheta, xv0[fsc].partphitor, xv0[fsc].partvpar,
         partmu0_allsp[fsc], xv0[fsc].partw, partfog0_allsp[fsc],
         dxvdt[fsc].partrad, dxvdt[fsc].parttheta, dxvdt[fsc].partphitor,
-        dxvdt[fsc].partvpar, dxvdt[fsc].partw);
+        dxvdt[fsc].partvpar, dxvdt[fsc].partw, T_onesp);
+    add_vectors(TTT_allsp, T_onesp);
   }
 }
 void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f(
-    int speciesIndex, Equilibrium &equ, FieldCls &fd,
+    const int speciesIndex, const Equilibrium &equ, const FieldCls &fd,
     const std::vector<std::complex<double>> &phik,
     const std::vector<std::complex<double>> &apark,
     const std::vector<int> &ntor1d,
@@ -49,17 +55,17 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f(
     const std::vector<double> &partw0, const std::vector<double> &partfog0,
     std::vector<double> &draddt, std::vector<double> &dthetadt,
     std::vector<double> &dphitordt, std::vector<double> &dvpardt,
-    std::vector<double> &dwdt) {
+    std::vector<double> &dwdt, std::vector<std::complex<double>> &TTT_onesp) {
   // Equivalent to calling the general function with EM case (case_id = 2)
   this->particle_ext_cls_dxvpardt123EMgeneral(
       speciesIndex, equ, fd, partrad0, parttheta0, partphitor0, partvpar0,
       partmu0, partw0, partfog0, draddt, dthetadt, dphitordt, dvpardt, dwdt,
       2, // EM case
-      phik, apark, ntor1d, amp);
+      phik, apark, ntor1d, amp, TTT_onesp);
 }
 
 void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
-    int speciesIndex, Equilibrium &equ, FieldCls &fd,
+    const int speciesIndex, const Equilibrium &equ, const FieldCls &fd,
     const std::vector<double> &partrad0, const std::vector<double> &parttheta0,
     const std::vector<double> &partphitor0,
     const std::vector<double> &partvpar0, const std::vector<double> &partmu0,
@@ -70,7 +76,8 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     const std::vector<std::complex<double>> &phik_c,
     const std::vector<std::complex<double>> &apark_c,
     const std::vector<int> &ntor1d,
-    const std::vector<std::complex<double>> &amp) {
+    const std::vector<std::complex<double>> &amp,
+    std::vector<std::complex<double>> &TTT_onesp) {
   // Precompute constant values
   ParticleSpecies &species = group.getSpecies(speciesIndex);
   const double rhoN = equ.rhoN;
@@ -78,6 +85,7 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
   const double Bref = equ.getBref();
   const double mass = species.getMass();
   const double zcharge = species.getCharge();
+  const double Cp2g = species.getCp2g();
   const int nptot = species.getNptot();
   const int ngyro = species.getNgyro();
   const int ischeme_motion = species.getIschemeMotion();
@@ -85,6 +93,7 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
   const int rank = species.getRank();
   double ffac = zcharge / mass;
   double cc1 = rhoN * mass * Bref / zcharge * std::sqrt(2.0);
+  int lenntor = ntor1d.size();
 
   // 2d1f push EM particle dynamics
   // Initialization
@@ -93,6 +102,9 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
   dphitordt.assign(nptot, 0.0);
   dvpardt.assign(nptot, 0.0);
   dwdt.assign(nptot, 0.0);
+  //
+  std::complex<double> zero_c(0.0, 0.0);
+  TTT_onesp.assign(lenntor, zero_c);
 
   // Main particle loop
   for (int fic = 0; fic < nptot; ++fic) {
@@ -210,7 +222,7 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       bstar1_rad_ct = bstarAs_rad_ct - bstar_rad_ct;
       bstar1_the_ct = bstarAs_the_ct - bstar_the_ct;
       bstar1_phi_ct = bstarAs_phi_ct - bstar_phi_ct;
-      //b*-b, b equilibrium part
+      // b*-b, b equilibrium part
       bstar_minus_b_rad_ct = bstarAs_rad_ct;
       bstar_minus_b_the_ct = bstarAs_the_ct - ptBthe_ct / ptB;
       bstar_minus_b_phi_ct = bstarAs_phi_ct - ptBphi_ct / ptB;
@@ -369,7 +381,6 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
             std::cerr << "**** error: wrong neocls value (0,1,2,3)"
                       << std::endl;
           }
-          // finalize_mpi_petsc();
         }
       }
 
@@ -387,7 +398,51 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
         dwdt[fic] += ptw * species.get_fsrcsnk(ptrad);
       }
     }
+    // calc T
+    auto T_onepar = calc_T_onePar(
+        equ, fd, zcharge, Cp2g, ptrad, pttheta, ptphitor, ptvpar, ptw,
+        ptvd_draddt, ptvd_dthedt, ptvd_dphidt, phik_c, ntor1d, amp);
+
+    add_vectors(TTT_onesp, T_onepar);
   } // End of particle loop
+}
+
+// calculate T for one particle
+std::vector<std::complex<double>> ParticleExtCls::calc_T_onePar(
+    const Equilibrium &equ, const FieldCls &fd, const double &zcharge,
+    const double &Cp2g, const double &partrad, const double &parttheta,
+    const double &partphitor, const double &partvpar, const double &partw,
+    const double &vd_rad, const double &vd_the, const double &vd_phi,
+    const std::vector<std::complex<double>> &phik_c,
+    const std::vector<int> &ntor1d,
+    const std::vector<std::complex<double>> &amp) {
+
+  int lenntor = ntor1d.size();
+  std::vector<std::complex<double>> TTT;
+  constexpr std::complex<double> zero_c(0.0, 0.0);
+  TTT.assign(lenntor, zero_c); // Initialize TTT with complex zeros
+
+  std::vector<std::complex<double>> dfdrad_c, dfdthe_c, dfdphi_c;
+  fd.field_cls_g2p2d1f_grad_complex(equ, phik_c, ntor1d, amp, partrad,
+                                    parttheta, partphitor, dfdrad_c, dfdthe_c,
+                                    dfdphi_c, 1, 0.0);
+
+  for (int itor = 0; itor < lenntor; ++itor) {
+    // Calculate the perturbation term
+    constexpr std::complex<double> i_c(0.0, 1.0);
+    std::complex<double> phase_factor(0.0, 0.0);
+    phase_factor =
+        std::exp(-i_c * static_cast<double>(ntor1d[itor]) * partphitor);
+    TTT[itor] = partw * phase_factor *
+                 (vd_rad * std::conj(dfdrad_c[itor]) +
+                  vd_the * std::conj(dfdthe_c[itor]));
+  }
+
+  for (int itor = 0; itor < lenntor; ++itor) {
+    TTT[itor] *= Cp2g * zcharge;
+  }
+
+  return TTT;
 }
 
 void ParticleExtCls::particle_ext_cls_test(Equilibrium &equ, FieldCls &fd,
@@ -437,11 +492,12 @@ void ParticleExtCls::particle_ext_cls_test(Equilibrium &equ, FieldCls &fd,
     std::vector<std::complex<double>> fk1(ntotfem2d1f, zero_complex),
         fk2(ntotfem2d1f, zero_complex);
     std::vector<std::complex<double>> amp_test(fd.lenntor, 1.0);
+    std::vector<std::complex<double>> TTT(fd.lenntor, zero_complex);
     //   Only test field can be used by particle
 
     this->particle_ext_cls_dxvpardt123EM2d1f(
         i, equ, fd, fk1, fk2, fd.ntor1d, amp_test, partrad, parttheta,
         partphitor, partvpar, partmu, partw, partfog, dxvdt.partrad,
-        dxvdt.parttheta, dxvdt.partphitor, dxvdt.partvpar, dxvdt.partw);
+        dxvdt.parttheta, dxvdt.partphitor, dxvdt.partvpar, dxvdt.partw, TTT);
   }
 }

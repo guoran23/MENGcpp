@@ -43,18 +43,7 @@ public:
                        Particle &pt,
                        const std::vector<std::complex<double>> &phik_c,
                        const std::vector<int> &ntor1d);
-  void field_ext_cls_calc_T_oneSpecies(
-      std::vector<std::complex<double>> &TTT, const Equilibrium &equ,
-      ParticleSpecies &species, const std::vector<double> &partrad0,
-      const std::vector<double> &parttheta0,
-      const std::vector<double> &partphitor0,
-      const std::vector<double> &partvpar0, const std::vector<double> &partw0,
-       const std::vector<double> &draddt,
-      const std::vector<double> &dthetadt, const std::vector<double> &dphitordt,
-      const std::vector<double> &dvpardt, const std::vector<double> &dwdt,
-      const int icase, const std::vector<std::complex<double>> &phik_c,
-      const std::vector<int> &ntor1d,
-      const std::vector<std::complex<double>> &amplitude_arr);
+                       
   void field_ext_cls_record1d(int istep) {
     // timer.timer_cls_tic(4);
 

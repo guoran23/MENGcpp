@@ -37,6 +37,17 @@ public:
     std::cout << "ParticleExtCls custom constructor called" << std::endl;
   }
 
+  void add_vectors(std::vector<std::complex<double>> &a,
+                   const std::vector<std::complex<double>> &b) {
+    if (a.size() != b.size()) {
+      throw std::runtime_error("add_vectors: size mismatch between vectors");
+    }
+
+    for (size_t i = 0; i < a.size(); ++i) {
+      a[i] += b[i];
+    }
+  }
+
   // --------------------
   void particle_ext_cls_test(Equilibrium &equ, FieldCls &fd, int irk, int nrun,
                              double dt_o_Ttr, int iset_track);
@@ -46,19 +57,20 @@ public:
   void particle_ext_cls_init(const Equilibrium &equ, int rank, int mpisize_in);
   //
   void particle_ext_cls_dxvpardt123EM2d1f_2sp(
-      Equilibrium &equ, FieldCls &fd,
+      const Equilibrium &equ, const FieldCls &fd,
       const std::vector<std::complex<double>> &phik,
       const std::vector<std::complex<double>> &apark,
-      const std::vector<int> &ntor1d, 
+      const std::vector<int> &ntor1d,
       const std::vector<std::complex<double>> &amp,
-      std::vector<ParticleCoords> &dxvdt);
+      std::vector<ParticleCoords> &dxvdt,
+      std::vector<std::complex<double>> &TTT_allsp);
 
   // ---- Time-stepping (Electromagnetic) ----
   void particle_ext_cls_dxvpardt123EM2d1f(
-      int speciesIndex, Equilibrium &equ, FieldCls &fd,
+      const int speciesIndex, const Equilibrium &equ, const FieldCls &fd,
       const std::vector<std::complex<double>> &phik,
       const std::vector<std::complex<double>> &apark,
-      const std::vector<int> &ntor1d, 
+      const std::vector<int> &ntor1d,
       const std::vector<std::complex<double>> &amp,
       const std::vector<double> &partrad0,
       const std::vector<double> &parttheta0,
@@ -67,9 +79,9 @@ public:
       const std::vector<double> &partw0, const std::vector<double> &partfog0,
       std::vector<double> &draddt, std::vector<double> &dthetadt,
       std::vector<double> &dphitordt, std::vector<double> &dvpardt,
-      std::vector<double> &dwdt);
+      std::vector<double> &dwdt, std::vector<std::complex<double>> &TTT_onesp);
   void particle_ext_cls_dxvpardt123EMgeneral(
-      int speciesIndex, Equilibrium &equ, FieldCls &fd,
+      const int speciesIndex, const Equilibrium &equ, const FieldCls &fd,
       const std::vector<double> &partrad0,
       const std::vector<double> &parttheta0,
       const std::vector<double> &partphitor0,
@@ -81,7 +93,16 @@ public:
       const std::vector<std::complex<double>> &phik,
       const std::vector<std::complex<double>> &apark,
       const std::vector<int> &ntor1d,
-    const std::vector<std::complex<double>> &amp);
+      const std::vector<std::complex<double>> &amp,
+      std::vector<std::complex<double>> &TTT_onesp);
+  std::vector<std::complex<double>> calc_T_onePar(
+      const Equilibrium &equ, const FieldCls &fd, const double &zcharge,
+      const double &Cp2g, const double &partrad0, const double &parttheta0,
+      const double &partphitor0, const double &partvpar0, const double &partw0,
+      const double &vd_rad, const double &vd_the, const double &vd_phi,
+      const std::vector<std::complex<double>> &phik_c,
+      const std::vector<int> &ntor1d,
+      const std::vector<std::complex<double>> &amp);
 };
 
 #endif // PARTICLEEXTCLS_H

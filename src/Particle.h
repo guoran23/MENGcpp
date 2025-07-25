@@ -594,7 +594,7 @@ public:
         std::cerr << "Error: Cannot open file " << filename << std::endl;
         return;
       }
-       
+
       for (int fidx = 0; fidx < nptot; ++fidx) {
         double rad = coords.partrad[fidx];
         double theta = coords.parttheta[fidx];
