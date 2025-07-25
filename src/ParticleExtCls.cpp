@@ -105,7 +105,7 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
   //
   std::complex<double> zero_c(0.0, 0.0);
   TTT_onesp.assign(lenntor, zero_c);
-
+  
   // Main particle loop
   for (int fic = 0; fic < nptot; ++fic) {
     double ptrad = partrad0[fic];
@@ -399,10 +399,10 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       }
     }
     // calc T
-    auto T_onepar = calc_T_onePar(
+    std::vector<std::complex<double>> T_onepar(lenntor,zero_c);
+    T_onepar = calc_T_onePar(
         equ, fd, zcharge, Cp2g, ptrad, pttheta, ptphitor, ptvpar, ptw,
         ptvd_draddt, ptvd_dthedt, ptvd_dphidt, phik_c, ntor1d, amp);
-
     add_vectors(TTT_onesp, T_onepar);
   } // End of particle loop
 }
