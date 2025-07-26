@@ -223,7 +223,7 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
                 << std::endl;
     }
   }
-  // give a MHD perturbation delta A_//=i/omega* \partial_// delta Phi
+  // give a MHD perturbation delta A_//= -i/omega* \partial_// delta Phi
   for (int itor = 0; itor < this->lenntor; ++itor) {
     double omega = omega_arr[itor];
     for (int impol = 0; impol < mpoloidal_arr[itor].size(); ++impol) {
@@ -256,7 +256,7 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
 
           this->phik[idx] += radial_part * angular_part;
 
-          // 计算对应的 A_//=i/omega * \partial_// delta Phi
+          // 计算对应的 A_//=-i/omega * \partial_// delta Phi
           double ww = 0.0;
           if (i == 0 || i == nradfem - 1) {
             ww = 0.0; // 边界条件
@@ -266,7 +266,7 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
             equ.calcBJgij(r, theta, ptRR, ptZZ, ptB, ptdBdrad, ptdBdthe,
                           ptBthe_ct, ptBphi_ct, ptjaco2, ptFF, ptg11, ptg12,
                           ptg22);
-            ww = -(mpoloidal * ptBthe_ct + ntor1d[itor] * ptBphi_ct) / ptB /
+            ww = (mpoloidal * ptBthe_ct + ntor1d[itor] * ptBphi_ct) / ptB /
                  omega;
           }
           this->apark[idx] +=
