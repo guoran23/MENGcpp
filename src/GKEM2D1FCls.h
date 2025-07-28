@@ -33,6 +33,7 @@ public:
   int itest = 0; // 0: test particle motion
                  // 1: euler, 2: rk4
   bool idiag_dxvdt;
+  int idiag_dxvdt_step;
 
   // 物理对象
   Equilibrium equ;
@@ -94,7 +95,7 @@ public:
       write_omega1(irun);
       write_particle_tot_Energy(irun);
 
-      if (idiag_dxvdt) {
+      if (idiag_dxvdt && irun % idiag_dxvdt_step == 0) {
         write_species_particles("data_xv0_", xv0, irun);
         write_species_particles("data_dxvdt_", dxvdt, irun);
       }
@@ -289,8 +290,8 @@ public:
     // 计算omega
     double rhoN = equ.rhoN;
     for (int i = 0; i < lenntor; ++i) {
-      omega_1_out[i] = std::complex<double>(0.0, 1.0) * TTT_global[i] / 2.0 / WWW[i] /
-                       std::norm(amp[i]); // 计算omega_1
+      omega_1_out[i] = std::complex<double>(0.0, 1.0) * TTT_global[i] / 2.0 /
+                       WWW[i] / std::norm(amp[i]); // 计算omega_1
       omega_1_out[i] = omega_1_out[i] / rhoN / rhoN;
     }
   }
@@ -614,6 +615,7 @@ void GKEM2D1FCls::gkem_cls_readInput(const std::string &inputFile) {
   this->dtoTN = reader.GetReal("MENG", "dtoTN", 0.01);
   itest = reader.GetInteger("MENG", "itest", 0);
   idiag_dxvdt = reader.GetBoolean("MENG", "idiag_dxvdt", false);
+  idiag_dxvdt_step = reader.GetInteger("Meng", "idiag_dxvdt_step", 100);
 }
 
 void GKEM2D1FCls::gkem_cls_initialize() {

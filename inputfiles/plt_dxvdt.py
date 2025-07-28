@@ -10,8 +10,8 @@ rad_max = 0.55
 
 # ---- 拆分字段 ----
 xv0_rad    = xv0_data[:, 0]
-xv0_theta  = xv0_data[:, 1]
-xv0_phi = xv0_data[:,2]
+xv0_theta = np.mod(xv0_data[:, 1], 2 * np.pi)
+xv0_phi   = np.mod(xv0_data[:, 2], 2 * np.pi)
 
 dxvdt_rad  = dxvdt_data[:, 0]
 dxvdt_partw = dxvdt_data[:, 4]
