@@ -94,16 +94,26 @@ def plot_phase_space_projections(data, spid):
     plt.show()
 
 def main():
-    files = sorted(glob.glob("data_particle???.txt"))
+    files = sorted(glob.glob("data_particle_SP000_RANK???.txt"))
     if not files:
-        print("❌ 没有找到 data_particle???.txt 文件")
+        print("❌ 没有找到 data_particle_SP000_RANK???.txt 文件")
         return
+
+    all_data = []
 
     for file in files:
         data = load_particle_file(file)
-        spid = os.path.basename(file)[-7:-4]  
-        plot_all_variables(data, spid)
-        plot_phase_space_projections(data, spid)
+        print(f"Loaded {file}: shape = {data.shape}")
+        all_data.append(data)
+
+    data_all = np.vstack(all_data)
+    print("✅ Combined data shape:", data_all.shape)
+
+    spid = os.path.basename(files[0])[-15:-12]  # "SP000"
+
+    plot_all_variables(data_all, spid)
+    plot_phase_space_projections(data_all, spid)
+
 
 if __name__ == "__main__":
     main()

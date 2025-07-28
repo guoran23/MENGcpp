@@ -579,37 +579,43 @@ public:
     }
   }
 
-  void particle_cls_record(const Equilibrium &equ) {
+  void particle_cls_record(const Equilibrium &equ, int rank) {
 
     if (rank == 0) {
-      std::ostringstream oss;
-      oss << std::setw(3) << std::setfill('0') << sp_id;
-      std::string cfile = oss.str();
-      std::string filename = "data_particle" + cfile + ".txt";
-
-      std::cout << "----Record to " << filename << "----" << std::endl;
-
-      std::ofstream outfile(filename);
-      if (!outfile.is_open()) {
-        std::cerr << "Error: Cannot open file " << filename << std::endl;
-        return;
-      }
-
-      for (int fidx = 0; fidx < nptot; ++fidx) {
-        double rad = coords.partrad[fidx];
-        double theta = coords.parttheta[fidx];
-        double r_val = equ.getR(rad, theta);
-        double z_val = equ.getZ(rad, theta);
-
-        outfile << std::scientific << std::setprecision(16)
-                << coords.partrad[fidx] << " " << coords.parttheta[fidx] << " "
-                << coords.partphitor[fidx] << " " << coords.partvpar[fidx]
-                << " " << partmu[fidx] << " " << coords.partw[fidx] << " "
-                << partfog[fidx] << " " << r_val << " " << z_val << std::endl;
-      }
-
-      outfile.close();
     }
+    std::ostringstream oss_sp, oss_rank;
+
+    oss_sp << std::setw(3) << std::setfill('0') << sp_id;
+    std::string cfile = oss_sp.str();
+    oss_rank << std::setw(3) << std::setfill('0') << rank;
+    std::string crank = oss_rank.str();
+
+    // 构造文件名
+    std::string filename =
+        "data_particle_SP" + cfile + "_RANK" + crank + ".txt";
+
+    std::cout << "----Record to " << filename << "----" << std::endl;
+
+    std::ofstream outfile(filename);
+    if (!outfile.is_open()) {
+      std::cerr << "Error: Cannot open file " << filename << std::endl;
+      return;
+    }
+
+    for (int fidx = 0; fidx < nptot; ++fidx) {
+      double rad = coords.partrad[fidx];
+      double theta = coords.parttheta[fidx];
+      double r_val = equ.getR(rad, theta);
+      double z_val = equ.getZ(rad, theta);
+
+      outfile << std::scientific << std::setprecision(16)
+              << coords.partrad[fidx] << " " << coords.parttheta[fidx] << " "
+              << coords.partphitor[fidx] << " " << coords.partvpar[fidx] << " "
+              << partmu[fidx] << " " << coords.partw[fidx] << " "
+              << partfog[fidx] << " " << r_val << " " << z_val << std::endl;
+    }
+
+    outfile.close();
   }
 
   void particle_cls_track_record(Equilibrium &equ, int irun) {
@@ -966,8 +972,8 @@ public:
         // record particle data
         if (rank == 0) {
           std::cout << "Finish particle_cls_loadmarker...\n";
-          species.particle_cls_record(equ);
         }
+        species.particle_cls_record(equ, rank);
       }
     }
   }
