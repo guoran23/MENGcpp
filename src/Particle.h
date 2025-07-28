@@ -1261,7 +1261,7 @@ public:
     // this->Vtot = this->Stot * this->rmaj * this->phitorwid;
     // 3d spline 2021/12/08; use NPTOT_ALL 2022/03/10!
     double Cp2g = Vtot / static_cast<double>(nptot_all);
-    Cp2g *= nsonN * (-zcharge);
+    Cp2g *= nsonN;
     Cp2g *= dens_mean;
 
     double Cp2g2d1f = Cp2g; // / phitorwid;
@@ -1271,7 +1271,7 @@ public:
     }
     double Cp2g1d =
         Vtot / static_cast<double>(nptot_all); // 1d spline 2022/08/18
-    Cp2g1d *= nsonN * (-zcharge);
+    Cp2g1d *= nsonN;
     Cp2g1d *= dens_mean;
     Cp2g1d /= (4.0 * std::pow(M_PI, 2) * rmaj / static_cast<double>(Nphimult));
 
