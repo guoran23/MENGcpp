@@ -209,6 +209,7 @@ public:
   double getCp2g() const { return Cp2g; }
   double getCp2g2d1f() const { return Cp2g2d1f; }
   double getCp2g1d() const { return Cp2g1d; }
+  void setNptotAll(long long np) { nptot_all = np; }
   void setTem(double t) { Tem = t; }
   void setNsonN(double n) { nsonN = n; }
   void setSpId(int id) { sp_id = id; }
@@ -742,7 +743,7 @@ public:
 
   int ischeme_motion, irandom_gy;
   int v_par0 = 1, v_d = 1, v_mirror = 1, v_ExB = 1, v_Epar = 1, idwdt = 1;
-  int imixvar = 1;
+  int imixvar = 0;
   int ibc_particle = 0, iset_zerosumw;
   bool irestart = false;
 
@@ -780,7 +781,7 @@ public:
   std::vector<int> filter_m1d;
   // !--perturbation--
   double pert_rc = 0.5;
-  double pert_rwid = 0.125, pert_thetac, pert_thetawid;
+  double pert_rwid = 0.125, pert_thetac = 0.1, pert_thetawid = 0.1;
   double pertamp = 4e-12, pert_lr = 0.0;
   int pert_scheme = 3, pert_m0 = -5, pert_m1 = -2, pert_nc = 2, pert_nmin,
       pert_nmax, pert_nstride, pert_lenm;
@@ -858,6 +859,8 @@ public:
     } else {
       load_seed = 42 + rank_in; // Default seed for reproducibility
     }
+    double ref_rmin = -1.0;
+    double ref_rmax = -1.0;
     // Iterate over predefined sections
     for (int i = 1; i <= nsp; ++i) {
       std::string section = "Particle_" + std::to_string(i);
@@ -867,8 +870,8 @@ public:
       double mass = reader.GetReal(section, "mass", 0.0);
       double zcharge = reader.GetReal(section, "zcharge", 0.0);
       std::string species_name = reader.Get(section, "species_name", "unknown");
-      double rmin = reader.GetReal(section, "rmin", 0.0);
-      double rmax = reader.GetReal(section, "rmax", 1.0);
+      double rmin_input = reader.GetReal(section, "rmin", 0.0);
+      double rmax_input = reader.GetReal(section, "rmax", 1.0);
       double Tem = reader.GetReal(section, "Tem", 1.0);
       double nsonN = reader.GetReal(section, "nsonN", 1.0);
       int ideltaf = reader.GetInteger(section, "ideltaf", 1);
@@ -880,17 +883,36 @@ public:
       std::vector<double> Tem_coef1d =
           reader.GetRealList(section, "Tem_coef1d", {0.0, 0.0, 0.0, 0.0});
 
+      // check rmin and rmax for all species are the same
+      if (i == 1) {
+        ref_rmin = rmin_input;
+        ref_rmax = rmax_input;
+        this->rmin = rmin_input;
+        this->rmax = rmax_input;
+      } else {
+        if (std::abs(rmin_input - ref_rmin) > 1e-10 ||
+            std::abs(rmax_input - ref_rmax) > 1e-10) {
+          std::cerr << "Error: Species " << species_name
+                    << " has inconsistent rmin/rmax! "
+                    << "(rmin = " << rmin_input << ", rmax = " << rmax_input
+                    << "), expected (rmin = " << ref_rmin
+                    << ", rmax = " << ref_rmax << ")\n";
+          std::exit(EXIT_FAILURE);
+        }
+      }
+
       if (nptot_all > 0) {
         int nptot = nptot_all / mpisize; // calculate particles per process
         nptot_all = nptot * mpisize;     // update total number of particles
         auto species = std::make_shared<ParticleSpecies>(nptot, mass, zcharge,
                                                          species_name);
         group.addSpecies(species);
-        species->rmin = rmin;
-        species->rmax = rmax;
+        species->rmin = rmin_input;
+        species->rmax = rmax_input;
         species->setTem(Tem);
         species->setNsonN(nsonN);
         species->setSpId(i - 1);
+        species->setNptotAll(nptot_all);
         species->setideltaf(ideltaf);
         species->setNgyro(ngyro);
         species->setIschemeMotion(ischeme_motion);
@@ -904,6 +926,7 @@ public:
                   << ", charge: " << zcharge << std::endl;
       }
     }
+    // check rmin and rmax for all species are the same
   }
   void writeProfiles(const int &rank) {
     if (rank == 0) {
@@ -1096,7 +1119,7 @@ public:
 
     partwcut = 1e-1;
 
-    pullbackN = 1;
+    pullbackN = 0;
     neocls = 0;
 
     // Set Run Parameters
@@ -1262,7 +1285,7 @@ public:
     // 3d spline 2021/12/08; use NPTOT_ALL 2022/03/10!
     double Cp2g = Vtot / static_cast<double>(nptot_all);
     Cp2g *= nsonN;
-    Cp2g *= dens_mean;
+    Cp2g *= dens_mean / equ.rhoN / equ.rhoN;
 
     double Cp2g2d1f = Cp2g; // / phitorwid;
     if (rank == 0) {
@@ -1272,7 +1295,7 @@ public:
     double Cp2g1d =
         Vtot / static_cast<double>(nptot_all); // 1d spline 2022/08/18
     Cp2g1d *= nsonN;
-    Cp2g1d *= dens_mean;
+    Cp2g1d *= dens_mean / equ.rhoN / equ.rhoN;
     Cp2g1d /= (4.0 * std::pow(M_PI, 2) * rmaj / static_cast<double>(Nphimult));
 
     species.setCp2g(Cp2g);
@@ -1307,11 +1330,6 @@ public:
                                       equ.rmaxis / species.vts);
 
     if (rank == 0) {
-      std::string sform_r =
-          "(A14,e12.5,A10,e12.5,A10,e12.5,A10,e12.5,A10,e12.5,A10,e12.5)";
-      std::string sform_i = "(A14,I10,A14,I10,A14,I10,A14,I10,A14,I10,A14,I10)";
-
-      // Since C++ doesn't support formatted write like Fortran, we use
       // std::cout with appropriate formatting
       std::cout << std::fixed << std::setprecision(5);
       std::cout << "imixvar=" << imixvar << ", ibc_particle=" << ibc_particle

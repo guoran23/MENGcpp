@@ -39,7 +39,7 @@ public:
   // Control
   bool nl_debug = false;
   bool irestart = false;
-  int imixvar = 1;
+  int imixvar = 0;
   int isolver;
   int imodel;
   int ischeme_Ohm;

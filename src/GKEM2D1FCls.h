@@ -268,7 +268,7 @@ public:
                          const std::vector<std::complex<double>> &omega_1_tmp,
                          int rank) {
     if (rank == 0) {
-      std::cout << name;
+      std::cout << name << " = ";
       for (const auto &val : omega_1_tmp) {
         std::cout << std::scientific << std::setprecision(15) << "("
                   << val.real() << "," << val.imag() << " i ) ";
@@ -292,8 +292,12 @@ public:
     for (int i = 0; i < lenntor; ++i) {
       omega_1_out[i] = std::complex<double>(0.0, 1.0) * TTT_global[i] / 2.0 /
                        WWW[i] / std::norm(amp[i]); // 计算omega_1
-      omega_1_out[i] = omega_1_out[i] / rhoN / rhoN;
+      omega_1_out[i] = omega_1_out[i] ;
     }
+    std::cout << "-----rank = " << rank << std::endl;
+    print_complex_vec("TTT", TTT, 0);
+    print_complex_vec("TTT_global", TTT_global, 0);
+    std::cout << "-----rank =" << rank << " end-----" << std::endl;
   }
 
   std::vector<std::complex<double>>

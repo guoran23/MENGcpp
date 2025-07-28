@@ -12,7 +12,7 @@ zcharge = 1.0 # EP charge
 Rmajor = 10.0 #[m]
 q0= 1.7 # safety factor
 
-Tf = 100 #[kev]
+Tf = 400 #[kev]
 n0= 2.0e19 # [m^-3]
 
 #
