@@ -87,5 +87,6 @@ axes[7].plot(data["partrad"])
 axes[7].set_title("rad")
 #
 axes[8].plot(data["partPcan"][:,2])
+axes[8].set_title("Pcan")
 plt.tight_layout()
 plt.show()

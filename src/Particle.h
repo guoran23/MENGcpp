@@ -828,7 +828,7 @@ public:
   }
   // getters
   int getNsp() const { return nsp; }
-  void readInput(const std::string &filepath, int mpisize) {
+  void readInput(const std::string &filepath, const int rank_in, int mpisize) {
     INIReaderExt reader(filepath);
     std::cout << "Reading input file: " << filepath << std::endl;
     std::cout << "Number of MPI processes: " << mpisize << std::endl;
@@ -843,10 +843,14 @@ public:
         reader.GetRealList("MENG", "ion_dens_coef1d", {0.0, 0.0, 0.0, 0.0});
     //
     if (use_random_seed) {
-      load_seed = static_cast<int>(
-          std::chrono::system_clock::now().time_since_epoch().count());
+      auto now = std::chrono::system_clock::now();
+      auto time_seed = static_cast<unsigned>(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              now.time_since_epoch())
+              .count());
+      load_seed = static_cast<int>(time_seed + rank_in);
     } else {
-      load_seed = 42; // Default seed for reproducibility
+      load_seed = 42 + rank_in; // Default seed for reproducibility
     }
     // Iterate over predefined sections
     for (int i = 1; i <= nsp; ++i) {
@@ -940,7 +944,7 @@ public:
     std::cout << "Instance Particle @process " << rank << " of " << mpisize_in
               << ".\n";
     // 1. READINPUT
-    readInput("input.ini", mpisize_in);
+    readInput("input.ini", rank, mpisize_in);
     if (rank == 0) {
       std::cout << "Finish particle readInput...\n"
                 << "nsp =" << nsp << std::endl;
