@@ -14,45 +14,41 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f_2sp(
   constexpr std::complex<double> zero_c(0.0, 0.0);
   TTT_allsp.resize(lenntor, zero_c);
 
-  std::vector<ParticleCoords> xv0(nsp);
-  std::vector<std::vector<double>> partmu0_allsp(nsp);
-  std::vector<std::vector<double>> partfog0_allsp(nsp);
-
-  for (int fsc = 0; fsc < nsp; ++fsc) {
-    ParticleSpecies &species = this->group.getSpecies(fsc);
-    int nptot = species.getNptot();
-    xv0[fsc] = species.getCoords(); // xv0= pt
-    partmu0_allsp[fsc] = species.partmu;
-    partfog0_allsp[fsc] = species.partfog;
-  }
-
-  if (partmu0_allsp.size() != getNsp()) {
-    std::cerr << "Error: partmu0_allsp size does not match ntor1d size."
-              << std::endl;
-    return;
-  }
-
   for (int fsc = 0; fsc < getNsp(); ++fsc) {
+
+    ParticleSpecies &species = this->group.getSpecies(fsc);
+    ParticleCoords &coords = species.getCoords(); 
     std::vector<std::complex<double>> T_onesp(lenntor, zero_c);
+
     particle_ext_cls_dxvpardt123EM2d1f(
-        fsc, equ, fd, phik, apark, fd.ntor1d, amp, xv0[fsc].partrad,
-        xv0[fsc].parttheta, xv0[fsc].partphitor, xv0[fsc].partvpar,
-        partmu0_allsp[fsc], xv0[fsc].partw, partfog0_allsp[fsc],
-        dxvdt[fsc].partrad, dxvdt[fsc].parttheta, dxvdt[fsc].partphitor,
-        dxvdt[fsc].partvpar, dxvdt[fsc].partw, T_onesp);
+        fsc, equ, fd, phik, apark, fd.ntor1d, amp,
+        coords.partrad,
+        coords.parttheta,
+        coords.partphitor,
+        coords.partvpar,
+        species.partmu,
+        coords.partw,
+        species.partfog,
+        dxvdt[fsc].partrad,
+        dxvdt[fsc].parttheta,
+        dxvdt[fsc].partphitor,
+        dxvdt[fsc].partvpar,
+        dxvdt[fsc].partw,
+        T_onesp);
+
     add_vectors(TTT_allsp, T_onesp);
   }
+  // print_complex_vector("TTT_allsp = ", TTT_allsp);
 }
 void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f(
     const int speciesIndex, const Equilibrium &equ, const FieldCls &fd,
     const std::vector<std::complex<double>> &phik,
     const std::vector<std::complex<double>> &apark,
     const std::vector<int> &ntor1d,
-    const std::vector<std::complex<double>> &amp,
-    const std::vector<double> &partrad0, const std::vector<double> &parttheta0,
-    const std::vector<double> &partphitor0,
-    const std::vector<double> &partvpar0, const std::vector<double> &partmu0,
-    const std::vector<double> &partw0, const std::vector<double> &partfog0,
+    const std::vector<std::complex<double>> &amp, std::vector<double> &partrad0,
+    std::vector<double> &parttheta0, std::vector<double> &partphitor0,
+    std::vector<double> &partvpar0, std::vector<double> &partmu0,
+    std::vector<double> &partw0, std::vector<double> &partfog0,
     std::vector<double> &draddt, std::vector<double> &dthetadt,
     std::vector<double> &dphitordt, std::vector<double> &dvpardt,
     std::vector<double> &dwdt, std::vector<std::complex<double>> &TTT_onesp) {
@@ -66,13 +62,12 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f(
 
 void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     const int speciesIndex, const Equilibrium &equ, const FieldCls &fd,
-    const std::vector<double> &partrad0, const std::vector<double> &parttheta0,
-    const std::vector<double> &partphitor0,
-    const std::vector<double> &partvpar0, const std::vector<double> &partmu0,
-    const std::vector<double> &partw0, const std::vector<double> &partfog0,
-    std::vector<double> &draddt, std::vector<double> &dthetadt,
-    std::vector<double> &dphitordt, std::vector<double> &dvpardt,
-    std::vector<double> &dwdt, int icase,
+    std::vector<double> &partrad0, std::vector<double> &parttheta0,
+    std::vector<double> &partphitor0, std::vector<double> &partvpar0,
+    std::vector<double> &partmu0, std::vector<double> &partw0,
+    std::vector<double> &partfog0, std::vector<double> &draddt,
+    std::vector<double> &dthetadt, std::vector<double> &dphitordt,
+    std::vector<double> &dvpardt, std::vector<double> &dwdt, int icase,
     const std::vector<std::complex<double>> &phik_c,
     const std::vector<std::complex<double>> &apark_c,
     const std::vector<int> &ntor1d,
@@ -84,6 +79,9 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
   const double rhotN = equ.rhoN;
   const double Bref = equ.getBref();
   const double mass = species.getMass();
+  const double Tem = species.getTem();
+  const double vts_max = 5.0 * std::sqrt(Tem / mass);
+  const double B_axis = equ.Bmaxis_adhoc;
   const double zcharge = species.getCharge();
   const double Cp2g = species.getCp2g();
   const int nptot = species.getNptot();
@@ -105,7 +103,7 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
   //
   std::complex<double> zero_c(0.0, 0.0);
   TTT_onesp.assign(lenntor, zero_c);
-  
+
   // Main particle loop
   for (int fic = 0; fic < nptot; ++fic) {
     double ptrad = partrad0[fic];
@@ -115,6 +113,7 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
     double ptmu = partmu0[fic];
     double ptw = partw0[fic];
     double ptfog = partfog0[fic];
+    std::vector<std::complex<double>> T_onepar(lenntor, zero_c);
 
     if (ptrad < fd.radmin || ptrad > fd.radmax) {
       draddt[fic] = 0.0;
@@ -122,7 +121,34 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       dphitordt[fic] = 0.0;
       dvpardt[fic] = 0.0;
       dwdt[fic] = 0.0;
+      partw0[fic] = 0.0;
+      // std::cout << "out boundary fic=" << fic << " " << ptrad << " " <<
+      // pttheta
+      //           << " " << ptphitor << " " << ptvpar << " " << ptmu << " " <<
+      //           ptw
+      //           << " " << ptfog << std::endl;
+
       continue; // Skip particles outside the radial range
+    }
+    if (std::abs(ptw) > 1.0) {
+      std::cout << "weight too large "
+                << "fic=" << fic << ", weight=" << ptw << std::endl;
+      partw0[fic] = 0.0;
+      continue;
+    }
+    if (std::abs(ptvpar) > vts_max) {
+      std::cout << "v_|| too large "
+                << "fic=" << fic << ", ptvpar=" << ptvpar << std::endl;
+      partw0[fic] = 0.0;
+      partvpar0[fic] = 0.0;
+      continue;
+    }
+    if (std::abs(std::sqrt(2.0 * ptmu * B_axis)) > vts_max) {
+      std::cout << "v_perp too large "
+                << "fic=" << fic << ", ptmu=" << ptmu << std::endl;
+      partw0[fic] = 0.0;
+      partmu0[fic] = 0.0;
+      continue;
     }
 
     double ptBthe_ct, ptBphi_ct;
@@ -399,12 +425,25 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       }
     }
     // calc T
-    std::vector<std::complex<double>> T_onepar(lenntor, zero_c);
+    if (std::abs(ptvd_draddt) > vts_max || std::abs(ptvd_dthedt) > vts_max) {
+      ptvd_draddt = 0.0;
+      ptvd_dthedt = 0.0;
+      std::cout << "vd too large: ptvd_rad=" << ptvd_draddt
+                << ", ptvd_theta=" << ptvd_dthedt << std::endl;
+    }
     T_onepar = calc_T_onePar(equ, fd, ptrad, pttheta, ptphitor, ptvpar, ptw,
                              ptvd_draddt, ptvd_dthedt, ptvd_dphidt, phik_c,
                              ntor1d, amp);
     add_vectors(TTT_onesp, T_onepar);
+
+    // std::ofstream out("T_onePar_output.txt", std::ios::app); // append 模式
+    // if (out.is_open()) {
+    //   out << std::imag(T_onepar[0]) << std::endl;
+    //   out.close();
+    // }
+
   } // End of particle loop
+
   for (int itor = 0; itor < lenntor; ++itor) {
     TTT_onesp[itor] *= Cp2g * zcharge;
   }
@@ -438,6 +477,12 @@ std::vector<std::complex<double>> ParticleExtCls::calc_T_onePar(
     TTT[itor] = partw * phase_factor *
                 (vd_rad * std::conj(dfdrad_c[itor]) +
                  vd_the * std::conj(dfdthe_c[itor]));
+
+    if (std::norm(TTT[itor]) > 1e-16) {
+      std::cout << "weight=" << partw << ", vd_rad=" << vd_rad
+                << ", vd_the=" << vd_the << ", dfdrad_c =" << dfdrad_c[itor]
+                << ", dfdthe_c =" << dfdthe_c[itor] << std::endl;
+    }
   }
   return TTT;
 }
@@ -464,7 +509,7 @@ void ParticleExtCls::particle_ext_cls_test(Equilibrium &equ, FieldCls &fd,
                 << std::endl;
     }
     // Get species coordinates
-    const auto &coords = species.getCoords(); // 先拿到引用，避免多次调用
+    auto &coords = species.getCoords(); // 先拿到引用，避免多次调用
     int nptot = species.getNptot();
     ParticleCoords dxvdt(nptot), dxv_sum(nptot), xv0(nptot);
     species.particle_cls_track_init(iset_track, Bax);
@@ -474,14 +519,13 @@ void ParticleExtCls::particle_ext_cls_test(Equilibrium &equ, FieldCls &fd,
     dxv_sum.setZero();
     xv0.setZero();
 
-    const std::vector<double> &partrad = coords.partrad;
-    const std::vector<double> &parttheta = coords.parttheta;
-    const std::vector<double> &partphitor = coords.partphitor;
-    const std::vector<double> &partvpar = coords.partvpar;
-    const std::vector<double> &partw = coords.partw;
-
-    const std::vector<double> &partmu = species.partmu;
-    const std::vector<double> &partfog = species.partfog;
+    std::vector<double> &partrad = coords.partrad;
+    std::vector<double> &parttheta = coords.parttheta;
+    std::vector<double> &partphitor = coords.partphitor;
+    std::vector<double> &partvpar = coords.partvpar;
+    std::vector<double> &partw = coords.partw;
+    std::vector<double> &partmu = species.partmu;
+    std::vector<double> &partfog = species.partfog;
     //   size_t nptot = nptot;
     auto zero_complex = std::complex<double>(0.0, 0.0);
 

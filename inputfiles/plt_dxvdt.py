@@ -2,18 +2,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # ---- 读取数据 ----
-xv0_data = np.loadtxt("data_xv0_SP_0.txt")     # shape: (N, 5)
-dxvdt_data = np.loadtxt("data_dxvdt_SP_0.txt") # shape: (N, 5)
+xv0_data = np.loadtxt("data_xv0_SP_0.txt")     # shape: (Nptot*nrun, 5)
+dxvdt_data = np.loadtxt("data_dxvdt_SP_0.txt") # shape: (Nptot*nrun, 5)
 #%%
+np_tot = 1000
+nrun = xv0_data.shape[0] // np_tot
 rad_min = 0.45
 rad_max = 0.55
+plt_run =21
 
 # ---- 拆分字段 ----
 xv0_rad    = xv0_data[:, 0]
 xv0_theta = np.mod(xv0_data[:, 1], 2 * np.pi)
 xv0_phi   = np.mod(xv0_data[:, 2], 2 * np.pi)
+xv0_vpar = xv0_data[:,3]
+xv0_w =xv0_data[:,4]
 
 dxvdt_rad  = dxvdt_data[:, 0]
+dxvdt_the = dxvdt_data[:, 1]
+dxvdt_phi = dxvdt_data[:,2]
+dxcdt_vpar = dxvdt_data[:,3]
 dxvdt_partw = dxvdt_data[:, 4]
 
 mask = (xv0_rad >= rad_min) & (xv0_rad <= rad_max)
@@ -22,10 +30,32 @@ rad_selected = xv0_rad[mask]
 theta_selected = xv0_theta[mask]
 phitor_selected = xv0_phi[mask]
 w_selected = dxvdt_partw[mask]
+#
+plt.figure(figsize=(15, 4))
+rad2d= xv0_rad.reshape(np_tot,nrun)
+the2d= xv0_theta.reshape(np_tot,nrun)
+phi2d=xv0_phi.reshape(np_tot,nrun)
+weight2d=xv0_w.reshape(np_tot,nrun)
+draddt_2d=dxvdt_rad.reshape(np_tot,nrun)
+dthedt_2d=dxvdt_the.reshape(np_tot,nrun)
+plt.subplot(1,3,1)
+plt.plot(rad2d[:,plt_run],weight2d[:,plt_run])
+plt.xlabel(" rad")
+plt.ylabel("weight")
+plt.title(f'plt_run={plt_run}')
+plt.subplot(1,3,2)
+plt.plot( draddt_2d[:,plt_run])
+plt.ylabel(" d rad /dt")
+plt.title(f'plt_run={plt_run}')
+# 图 2: dxvdt.partw vs. xv0.rad
+plt.subplot(1, 3, 3)
+plt.plot( dthedt_2d[:,plt_run])
+plt.ylabel(" d rad /dt")
+plt.title(f'plt_run={plt_run}')
+plt.grid(True)
 
 # ---- 画图 ----
 plt.figure(figsize=(15, 4))
-
 # 图 1: dxvdt.rad vs. xv0.rad
 plt.subplot(1, 3, 1)
 plt.plot(xv0_rad, dxvdt_rad, 'o', markersize=2)
@@ -41,6 +71,7 @@ plt.xlabel("xv0.rad")
 plt.ylabel("dxvdt.partw")
 plt.title("dxvdt.partw vs xv0.rad")
 plt.grid(True)
+
 
 # 图 3: dxvdt.partw vs. xv0.theta
 plt.subplot(1, 3, 3)

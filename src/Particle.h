@@ -154,7 +154,7 @@ protected:
   int size = 0;
 
 public:
-  int idensprof = 1; // density profile type
+  int idensprof; // density profile type
   std::vector<double> dens_coef1d = {0.49123, 0.298228, 0.198739,
                                      0.0037567601019};
   int iTemprof = 1; // temperature profile type
@@ -1069,17 +1069,6 @@ public:
     double twopi = 2.0 * M_PI;
     UtilMath::lgwt(nthe, 0.0, twopi, xthe, wthe);
 
-    // Debug output (assuming rank == 0)
-    std::cout << "sum(wrad) = "
-              << std::accumulate(wrad.begin(), wrad.end(), 0.0)
-              << ", sum(wthe) = "
-              << std::accumulate(wthe.begin(), wthe.end(), 0.0) << std::endl;
-    std::cout << "mean(xrad) = "
-              << std::accumulate(xrad.begin(), xrad.end(), 0.0) / nrad
-              << ", mean(xthe) = "
-              << std::accumulate(xthe.begin(), xthe.end(), 0.0) / nthe
-              << std::endl;
-
     // Nested loop for computation
     for (int fic = 0; fic < nrad; ++fic) {
       for (int fjc = 0; fjc < nthe; ++fjc) {
@@ -1137,26 +1126,10 @@ public:
     int ideltaf = species.getideltaf();
 
     // Set parameters for all species
-    ischeme_motion = ischeme_motion;
     ngyro = species.getNgyro();
-    irandom_gy = irandom_gy;
-    imixvar = imixvar;
+
     // Physics
-    vparmaxovt = vparmaxovt;
     // Perturbation
-    pert_rc = pert_rc;
-    pert_rwid = pert_rwid;
-    pert_thetac = pert_thetac;
-    pert_thetawid = pert_thetawid;
-    pertamp = pertamp;
-    pert_lr = pert_lr;
-    pert_m0 = pert_m0;
-    pert_m1 = pert_m1;
-    pert_nc = pert_nc;
-    pert_nmin = pert_nmin;
-    pert_nmax = pert_nmax;
-    pert_nstride = pert_nstride;
-    pert_scheme = pert_scheme;
     pert_lenm = std::abs(pert_m0 - pert_m1) + 1;
     pert_m1d.resize(pert_lenm);
     int min_pert_m = std::min(pert_m0, pert_m1);
@@ -1206,10 +1179,6 @@ public:
     rmid = (rmin + rmax) / 2.0;
     rc = rmid;
 
-    ifilter = ifilter;
-    filter_nc = filter_nc;
-    filter_m0 = filter_m0;
-    filter_m1 = filter_m1;
     int nlen_filter = std::abs(filter_m1 - filter_m0) + 1;
     if (rank == 0) {
       std::cout << "nlen=" << nlen_filter << std::endl;
@@ -1228,26 +1197,6 @@ public:
       std::cout << std::endl;
     }
 
-    Nphimult = Nphimult;
-
-    irec_track = irec_track;
-    irec_Eparticle = irec_Eparticle;
-    irec_converge = irec_converge;
-    iuseprv = iuseprv;
-
-    ibc_particle = ibc_particle;
-    iset_zerosumw = iset_zerosumw;
-
-    isrcsnk = isrcsnk;
-    radsrcsnkL = radsrcsnkL;
-    radsrcsnkR = radsrcsnkR;
-    coefsrcsnkL = coefsrcsnkL;
-    coefsrcsnkR = coefsrcsnkR;
-    pullbackN = pullbackN;
-    neocls = neocls;
-    partwcut = partwcut;
-    profilename = profilename;
-
     // Derived variables
     double nu_colstar = nu_colN / std::pow(std::sqrt(rc / rmaj), 3) *
                         std::sqrt(2.0) * equ.getqloc_rt(rc, 0.0) * rmaj *
@@ -1265,16 +1214,7 @@ public:
     mumaxovN2 = std::pow(vparmaxovN, 2) / (2.0 * Bax);
     std::cout << "mumaxovN2=" << mumaxovN2 << std::endl;
     species.vts = std::sqrt(Tem / mass);
-    // --
-    // // test lgwt
-    // std::vector<double> xrad_test(10), wrad_test(10);
-    // UtilMath::lgwt(10, 0.2, 0.8, xrad_test, wrad_test);
-    // for (int i = 0; i < 10; i++) {
-    //   std::cout << "xrad_test[" << i << "]=" << xrad_test[i] << ",
-    //   wrad_test["
-    //             << i << "]=" << wrad_test[i] << std::endl;
-    // }
-
+    
     this->particle_cls_mean_dens(equ, species, this->rmin, this->rmax, 100, 200,
                                  this->Vtot, this->dens_intg, this->dens_mean,
                                  this->Stot);
@@ -1284,6 +1224,7 @@ public:
     // this->Vtot = this->Stot * this->rmaj * this->phitorwid;
     // 3d spline 2021/12/08; use NPTOT_ALL 2022/03/10!
     double Cp2g = Vtot / static_cast<double>(nptot_all);
+    std::cout << "nptot_all =" << nptot_all <<std::endl;
     Cp2g *= nsonN;
     Cp2g *= dens_mean / equ.rhoN / equ.rhoN;
 
@@ -1297,7 +1238,7 @@ public:
     Cp2g1d *= nsonN;
     Cp2g1d *= dens_mean / equ.rhoN / equ.rhoN;
     Cp2g1d /= (4.0 * std::pow(M_PI, 2) * rmaj / static_cast<double>(Nphimult));
-
+    std::cout<<"equ.rhoN= "<< equ.rhoN << std::endl;
     species.setCp2g(Cp2g);
     species.setCp2g2d1f(Cp2g2d1f);
     species.setCp2g1d(Cp2g1d);
