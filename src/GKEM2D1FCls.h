@@ -278,8 +278,7 @@ public:
   }
 
   void
-  gkem_cls_solve_delta_omega(std::vector<double> &omega_0_in,
-                             std::vector<std::complex<double>> &omega_1_out,
+  gkem_cls_solve_delta_omega(std::vector<std::complex<double>> &omega_1_out,
                              std::vector<std::complex<double>> &amp) {
     // MPI 通信
     constexpr std::complex<double> zero_c(0.0, 0.0);
@@ -381,7 +380,7 @@ public:
         equ, fd, fd.phik, fd.apark, fd.ntor1d, amp0_with_phase, dxvdt, TTT);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
 
-    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp0);
+    gkem_cls_solve_delta_omega(omega_1_tmp, amp0);
     calc_dAdt(dampdt, amp0, omega_1_tmp);
     add_dAdt(damp_sum, dampdt, dt1o6);
 
@@ -394,7 +393,7 @@ public:
         equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase_tmp, dxvdt, TTT);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt2o6);
 
-    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp_tmp);
+    gkem_cls_solve_delta_omega(omega_1_tmp, amp_tmp);
     calc_dAdt(dampdt, amp_tmp, omega_1_tmp);
     add_dAdt(damp_sum, dampdt, dt2o6);
 
@@ -410,7 +409,7 @@ public:
         equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase_tmp, dxvdt, TTT);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt2o6);
 
-    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp_tmp);
+    gkem_cls_solve_delta_omega(omega_1_tmp, amp_tmp);
     calc_dAdt(dampdt, amp_tmp, omega_1_tmp);
     add_dAdt(damp_sum, dampdt, dt2o6);
 
@@ -426,7 +425,7 @@ public:
         equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase_tmp, dxvdt, TTT);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
 
-    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp_tmp);
+    gkem_cls_solve_delta_omega(omega_1_tmp, amp_tmp);
     calc_dAdt(dampdt, amp_tmp, omega_1_tmp);
     add_dAdt(damp_sum, dampdt, dt1o6);
 
@@ -464,7 +463,7 @@ public:
         equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, dxvdt, TTT);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
 
-    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp0);
+    gkem_cls_solve_delta_omega(omega_1_tmp, amp0);
     print_complex_vec("omega_1", omega_1_tmp, rank);
 
     // Step 2
@@ -520,7 +519,7 @@ public:
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
         equ, fd, fd.phik, fd.apark, fd.ntor1d, amp0_with_phase, dxvdt, TTT);
     std::vector<std::complex<double>> omega_1_tmp(lenntor, zero_c);
-    gkem_cls_solve_delta_omega(omega_0, omega_1_tmp, amp0);
+    gkem_cls_solve_delta_omega(omega_1_tmp, amp0);
     calc_dAdt(dampdt, amp0, omega_1_tmp);
     pt->particle_add_coords2sp(*pt, dxvdt, dt);
     add_dAdt(amp_tmp, dampdt, dt);

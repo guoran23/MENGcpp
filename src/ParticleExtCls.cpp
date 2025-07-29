@@ -399,21 +399,23 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       }
     }
     // calc T
-    std::vector<std::complex<double>> T_onepar(lenntor,zero_c);
-    T_onepar = calc_T_onePar(
-        equ, fd, zcharge, Cp2g, ptrad, pttheta, ptphitor, ptvpar, ptw,
-        ptvd_draddt, ptvd_dthedt, ptvd_dphidt, phik_c, ntor1d, amp);
+    std::vector<std::complex<double>> T_onepar(lenntor, zero_c);
+    T_onepar = calc_T_onePar(equ, fd, ptrad, pttheta, ptphitor, ptvpar, ptw,
+                             ptvd_draddt, ptvd_dthedt, ptvd_dphidt, phik_c,
+                             ntor1d, amp);
     add_vectors(TTT_onesp, T_onepar);
   } // End of particle loop
+  for (int itor = 0; itor < lenntor; ++itor) {
+    TTT_onesp[itor] *= Cp2g * zcharge;
+  }
 }
 
 // calculate T for one particle
 std::vector<std::complex<double>> ParticleExtCls::calc_T_onePar(
-    const Equilibrium &equ, const FieldCls &fd, const double &zcharge,
-    const double &Cp2g, const double &partrad, const double &parttheta,
-    const double &partphitor, const double &partvpar, const double &partw,
-    const double &vd_rad, const double &vd_the, const double &vd_phi,
-    const std::vector<std::complex<double>> &phik_c,
+    const Equilibrium &equ, const FieldCls &fd, const double &partrad,
+    const double &parttheta, const double &partphitor, const double &partvpar,
+    const double &partw, const double &vd_rad, const double &vd_the,
+    const double &vd_phi, const std::vector<std::complex<double>> &phik_c,
     const std::vector<int> &ntor1d,
     const std::vector<std::complex<double>> &amp) {
 
@@ -434,14 +436,9 @@ std::vector<std::complex<double>> ParticleExtCls::calc_T_onePar(
     phase_factor =
         std::exp(-i_c * static_cast<double>(ntor1d[itor]) * partphitor);
     TTT[itor] = partw * phase_factor *
-                 (vd_rad * std::conj(dfdrad_c[itor]) +
-                  vd_the * std::conj(dfdthe_c[itor]));
+                (vd_rad * std::conj(dfdrad_c[itor]) +
+                 vd_the * std::conj(dfdthe_c[itor]));
   }
-
-  for (int itor = 0; itor < lenntor; ++itor) {
-    TTT[itor] *= Cp2g * zcharge;
-  }
-
   return TTT;
 }
 

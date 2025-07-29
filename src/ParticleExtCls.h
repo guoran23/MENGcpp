@@ -95,14 +95,15 @@ public:
       const std::vector<int> &ntor1d,
       const std::vector<std::complex<double>> &amp,
       std::vector<std::complex<double>> &TTT_onesp);
-  std::vector<std::complex<double>> calc_T_onePar(
-      const Equilibrium &equ, const FieldCls &fd, const double &zcharge,
-      const double &Cp2g, const double &partrad0, const double &parttheta0,
-      const double &partphitor0, const double &partvpar0, const double &partw0,
-      const double &vd_rad, const double &vd_the, const double &vd_phi,
-      const std::vector<std::complex<double>> &phik_c,
-      const std::vector<int> &ntor1d,
-      const std::vector<std::complex<double>> &amp);
+  std::vector<std::complex<double>>
+  calc_T_onePar(const Equilibrium &equ, const FieldCls &fd,
+                const double &partrad0, const double &parttheta0,
+                const double &partphitor0, const double &partvpar0,
+                const double &partw0, const double &vd_rad,
+                const double &vd_the, const double &vd_phi,
+                const std::vector<std::complex<double>> &phik_c,
+                const std::vector<int> &ntor1d,
+                const std::vector<std::complex<double>> &amp);
 };
 
 #endif // PARTICLEEXTCLS_H
