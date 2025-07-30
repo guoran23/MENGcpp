@@ -338,7 +338,6 @@ int main(int argc, char **argv) {
   // return 0;
 
   GKEM2D1FCls gkem2d1f(argc, argv);
-  // gkem2d1f.testParticle();
   gkem2d1f.test(); // test with itest = 0 1 2
   
   auto end_time = std::chrono::high_resolution_clock::now();

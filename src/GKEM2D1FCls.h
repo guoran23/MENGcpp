@@ -122,7 +122,15 @@ public:
       outfile.open(filename, std::ios::app);
 
     for (const auto &val : data) {
-      outfile << std::scientific << std::setprecision(15) << val << " ";
+      double re = std::real(val);
+      double im = std::imag(val);
+
+      if (std::isnan(re) || std::isnan(im)) {
+        outfile << "Nan Nan ";
+      } else {
+        outfile << std::scientific << std::setprecision(15) << re << " " << im
+                << " ";
+      }
     }
     outfile << std::endl;
     outfile.close();
@@ -331,8 +339,14 @@ public:
                 const std::vector<std::complex<double>> &dAdt,
                 const double dt) {
     for (size_t itor = 0; itor < A_out.size(); ++itor) {
-      A_out[itor] += dAdt[itor] * dt;
+     
+      if (this->itest == 0) {
+        A_out[itor] +=  0.0;
+      } else {
+         A_out[itor] += dAdt[itor] * dt;
+      }
     }
+
   }
 
   void calc_dAdt(std::vector<std::complex<double>> &dAdt,
@@ -437,66 +451,6 @@ public:
     this->omega_1 = omega_1_tmp; // update omega_1 for recording
   }
 
-  void onestep_rk4_testParticle(std::vector<ParticleCoords> &xv0,
-                                std::vector<ParticleCoords> &dxv_sum,
-                                std::vector<ParticleCoords> &dxvdt, double dt,
-                                double time_now) {
-    double dthalf = dt / 2.0;
-    double dt1o6 = dt / 6.0;
-    double dt2o6 = dt * 2.0 / 6.0;
-    constexpr std::complex<double> zero_c(0.0, 0.0);
-    std::vector<std::complex<double>> amp_tmp(lenntor, zero_c),
-        amp_with_phase(lenntor, zero_c);
-
-    for (int fsc = 0; fsc < nsp; ++fsc) {
-      ParticleSpecies &species = pt->group.getSpecies(fsc);
-      int nptot = species.getNptot();
-      dxv_sum[fsc].initialize(nptot); // dxv_sum initialize to 0.0
-      xv0[fsc] = species.getCoords(); // xv0= pt
-    }
-    amp_tmp = fd.amplitude_arr; // 复制amplitude_arr到amp_tmp
-    amp0 = fd.amplitude_arr;
-    calc_amp_with_phase(amp_with_phase, fd.amplitude_arr, time_now);
-    std::vector<std::complex<double>> omega_1_tmp(lenntor, zero_c);
-
-    // Step 1
-    pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, dxvdt, TTT);
-    pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
-
-    gkem_cls_solve_delta_omega(omega_1_tmp, amp0);
-    print_complex_vec("omega_1", omega_1_tmp, rank);
-
-    // Step 2
-    pt->particle_add_coords2sp(*pt, dxvdt, dthalf);
-    calc_amp_with_phase(amp_with_phase, amp_tmp, time_now + dthalf);
-    pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, dxvdt, TTT);
-    pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt2o6);
-
-    // Step 3
-    pt->particle_setvalue2sp_from_coords(*pt, xv0); // reset to initial
-    pt->particle_add_coords2sp(*pt, dxvdt, dthalf);
-
-    pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, dxvdt, TTT);
-    pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt2o6);
-
-    // // Step 4
-    pt->particle_setvalue2sp_from_coords(*pt, xv0); // reset to initial
-    pt->particle_add_coords2sp(*pt, dxvdt, dt);
-    calc_amp_with_phase(amp_with_phase, amp_tmp, time_now + dt);
-
-    pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase, dxvdt, TTT);
-    pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
-
-    // Final update of amplitude and particle coordinates
-
-    pt->particle_setvalue2sp_from_coords(*pt, xv0);
-    pt->particle_add_coords2sp(*pt, dxv_sum, 1.0);
-  }
-
   void onestep_euler(std::vector<ParticleCoords> &xv0,
                      std::vector<ParticleCoords> &dxvdt, double dt,
                      double time_now) {
@@ -535,6 +489,7 @@ public:
     if (rank == 0) {
       std::cout << "Testing GKEM2D1FCls with nrun = " << nrun << std::endl;
       std::cout << "dtoTN = " << dtoTN << std::endl;
+      std::cout << "itest = " << itest << std::endl;
       if (rank == 0) {
         std::cout << "Initial amplitude---." << std::endl;
         std::cout << "amplitude_arr: ";
@@ -549,13 +504,10 @@ public:
       if (rank == 0) {
         std::cout << "Running step " << i + 1 << " of " << nrun << std::endl;
       }
-      if (itest == 0) {
-        onestep_rk4_testParticle(xv0, dxv_sum, dxvdt, dtoTN, time_now);
-
+      if (itest == 0 || itest == 2) {
+        onestep_rk4(xv0, dxv_sum, dxvdt, dtoTN, time_now);
       } else if (itest == 1) {
         onestep_euler(xv0, dxvdt, dtoTN, time_now);
-      } else if (itest == 2) {
-        onestep_rk4(xv0, dxv_sum, dxvdt, dtoTN, time_now);
       } else {
         throw std::runtime_error("Invalid itest number: " +
                                  std::to_string(itest));
@@ -567,39 +519,6 @@ public:
     if (rank == 0) {
       std::cout << "Test completed." << std::endl;
     }
-  }
-
-  void testParticle() {
-    gkem_cls_initialize();
-    // 测试函数
-    if (rank == 0) {
-      std::cout << "Testing GKEM2D1FCls with nrun = " << nrun << std::endl;
-      std::cout << "dtoTN = " << dtoTN << std::endl;
-      if (rank == 0) {
-        std::cout << "Initial amplitude---." << std::endl;
-        std::cout << "amplitude_arr: ";
-        for (const auto &amp : fd.amplitude_arr) {
-          std::cout << std::scientific << std::setprecision(15) << amp << " ";
-        }
-        std::cout << std::endl;
-      }
-    }
-    double time_now = 0.0; // 初始化时间
-    for (int i = 0; i < nrun; ++i) {
-      if (rank == 0) {
-        std::cout << "Running step " << i + 1 << " of " << nrun << std::endl;
-      }
-      onestep_rk4_testParticle(xv0, dxv_sum, dxvdt, dtoTN, time_now);
-      // if (rank == 0) {
-      //   std::cout << "Step " << i + 1 << " completed." << std::endl;
-      //   std::cout << std::endl;
-      // }
-      gkem_cls_record(i + 1);
-    }
-    if (rank == 0) {
-      std::cout << "Test completed." << std::endl;
-    }
-    time_now += dtoTN; // 更新时间
   }
 };
 

@@ -9,7 +9,7 @@ np_tot = 1000
 nrun = xv0_data.shape[0] // np_tot
 rad_min = 0.45
 rad_max = 0.55
-plt_run =21
+plt_run = 10
 
 # ---- 拆分字段 ----
 xv0_rad    = xv0_data[:, 0]
@@ -50,7 +50,7 @@ plt.title(f'plt_run={plt_run}')
 # 图 2: dxvdt.partw vs. xv0.rad
 plt.subplot(1, 3, 3)
 plt.plot( dthedt_2d[:,plt_run])
-plt.ylabel(" d rad /dt")
+plt.ylabel(" d the /dt")
 plt.title(f'plt_run={plt_run}')
 plt.grid(True)
 

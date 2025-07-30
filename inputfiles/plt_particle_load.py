@@ -14,6 +14,22 @@ def load_particle_file(filename):
     data = np.loadtxt(filename)
     return data
 
+def plot_all_variables_hist(data, spid):
+    """绘制9个变量的直方图"""
+    fig, axs = plt.subplots(3, 3, figsize=(14, 10))
+    fig.suptitle(f"All Particle Variables Histogram - Species {spid}", fontsize=16)
+
+    for i in range(9):
+        ax = axs[i // 3][i % 3]
+        ax.hist(data[:, i], bins=30, alpha=0.7, edgecolor='black')
+        ax.set_title(VAR_NAMES[i])
+        ax.set_xlabel(VAR_NAMES[i])
+        ax.set_ylabel("Frequency")
+        ax.grid(True)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()
+    
 def plot_all_variables_multi(data_list, spid):
     """多个 rank 的变量随粒子编号变化图，用不同颜色区分"""
     fig, axs = plt.subplots(3, 3, figsize=(14, 10))
@@ -109,6 +125,7 @@ def main():
     spid = os.path.basename(files[0])[17:20]
 
     # 画图
+    plot_all_variables_hist(data_combined, spid)
     plot_all_variables_multi(data_list, spid)
     plot_phase_space_projections_multi(data_list, spid)
 
