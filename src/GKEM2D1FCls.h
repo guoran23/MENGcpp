@@ -290,7 +290,8 @@ public:
     double rhoN = equ.rhoN;
     for (int i = 0; i < lenntor; ++i) {
       omega_1_out[i] = std::complex<double>(0.0, 1.0) * TTT_global[i] / 2.0 /
-                       WWW[i] / std::norm(amp[i]); // 计算omega_1
+                       WWW[i] / std::norm(amp[i]); // 计算omega
+      omega_1_out[i] =  - omega_1_out[i] / 6.28;
     }
     // std::cout << "-----rank = " << rank << std::endl;
     // print_complex_vec("TTT", TTT, 0);
