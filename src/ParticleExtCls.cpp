@@ -17,24 +17,14 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EM2d1f_2sp(
   for (int fsc = 0; fsc < getNsp(); ++fsc) {
 
     ParticleSpecies &species = this->group.getSpecies(fsc);
-    ParticleCoords &coords = species.getCoords(); 
+    ParticleCoords &coords = species.getCoords();
     std::vector<std::complex<double>> T_onesp(lenntor, zero_c);
 
     particle_ext_cls_dxvpardt123EM2d1f(
-        fsc, equ, fd, phik, apark, fd.ntor1d, amp,
-        coords.partrad,
-        coords.parttheta,
-        coords.partphitor,
-        coords.partvpar,
-        species.partmu,
-        coords.partw,
-        species.partfog,
-        dxvdt[fsc].partrad,
-        dxvdt[fsc].parttheta,
-        dxvdt[fsc].partphitor,
-        dxvdt[fsc].partvpar,
-        dxvdt[fsc].partw,
-        T_onesp);
+        fsc, equ, fd, phik, apark, fd.ntor1d, amp, coords.partrad,
+        coords.parttheta, coords.partphitor, coords.partvpar, species.partmu,
+        coords.partw, species.partfog, dxvdt[fsc].partrad, dxvdt[fsc].parttheta,
+        dxvdt[fsc].partphitor, dxvdt[fsc].partvpar, dxvdt[fsc].partw, T_onesp);
 
     add_vectors(TTT_allsp, T_onesp);
   }
@@ -431,6 +421,10 @@ void ParticleExtCls::particle_ext_cls_dxvpardt123EMgeneral(
       std::cout << "vd too large: ptvd_rad=" << ptvd_draddt
                 << ", ptvd_theta=" << ptvd_dthedt << std::endl;
     }
+    // T_onepar =
+    //     calc_T_onePar(equ, fd, ptrad, pttheta, ptphitor, ptvpar, ptw,
+    //                   ptvd_draddt + ptEB_draddt, ptvd_dthedt + ptEB_dthedt,
+    //                   ptvd_dphidt + ptEB_dphidt, phik_c, ntor1d, amp);
     T_onepar = calc_T_onePar(equ, fd, ptrad, pttheta, ptphitor, ptvpar, ptw,
                              ptvd_draddt, ptvd_dthedt, ptvd_dphidt, phik_c,
                              ntor1d, amp);
@@ -472,17 +466,16 @@ std::vector<std::complex<double>> ParticleExtCls::calc_T_onePar(
     // Calculate the perturbation term
     constexpr std::complex<double> i_c(0.0, 1.0);
     std::complex<double> phase_factor(0.0, 0.0);
-    phase_factor =
-        std::exp(-i_c * static_cast<double>(ntor1d[itor]) * partphitor);
-    TTT[itor] = partw * phase_factor *
-                (vd_rad * std::conj(dfdrad_c[itor]) +
-                 vd_the * std::conj(dfdthe_c[itor]));
+    // phase_factor =
+    //     std::exp(-i_c * static_cast<double>(ntor1d[itor]) * partphitor);
+    TTT[itor] = partw * (vd_rad * std::conj(dfdrad_c[itor]) +
+                         vd_the * std::conj(dfdthe_c[itor]));
 
-    if (std::norm(TTT[itor]) > 1e-16) {
-      std::cout << "weight=" << partw << ", vd_rad=" << vd_rad
-                << ", vd_the=" << vd_the << ", dfdrad_c =" << dfdrad_c[itor]
-                << ", dfdthe_c =" << dfdthe_c[itor] << std::endl;
-    }
+    // if (std::norm(TTT[itor]) > 1e-16) {
+    //   std::cout << "weight=" << partw << ", vd_rad=" << vd_rad
+    //             << ", vd_the=" << vd_the << ", dfdrad_c =" << dfdrad_c[itor]
+    //             << ", dfdthe_c =" << dfdthe_c[itor] << std::endl;
+    // }
   }
   return TTT;
 }

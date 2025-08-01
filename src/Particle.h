@@ -154,7 +154,7 @@ protected:
   int size = 0;
 
 public:
-  int idensprof; // density profile type
+  int idensprof = 2; // density profile type
   std::vector<double> dens_coef1d = {0.49123, 0.298228, 0.198739,
                                      0.0037567601019};
   int iTemprof = 1; // temperature profile type
@@ -765,7 +765,7 @@ public:
   // Assuming bspline_1d is a class or struct defined elsewhere
   // bspline_1d dens_bsp, Tem_bsp;
   int load_can, ischeme_load;
-  int load_seed;
+  int load_seed = 42;
   bool use_random_seed = false; // 是否使用新的随机数生成器
   double Bax;
   double rmin = 0.2, rmax = 0.8;
@@ -1136,13 +1136,13 @@ public:
     for (int fic = 0; fic < pert_lenm; ++fic) {
       pert_m1d[fic] = min_pert_m - 1 + (fic + 1);
     }
-    if (rank == 0) {
-      std::cout << "lenm=" << pert_lenm << ", pert_m1d=";
-      for (const auto &val : pert_m1d) {
-        std::cout << val << " ";
-      }
-      std::cout << std::endl;
-    }
+    // if (rank == 0) {
+    //   std::cout << "lenm=" << pert_lenm << ", pert_m1d=";
+    //   for (const auto &val : pert_m1d) {
+    //     std::cout << val << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
 
     // Antenna
     ant_rc = 0.5;
@@ -1160,13 +1160,13 @@ public:
     for (int fic = 0; fic < ant_lenm; ++fic) {
       ant_m1d[fic] = min_ant_m - 1 + (fic + 1);
     }
-    if (rank == 0) {
-      std::cout << "lenm=" << ant_lenm << ", ant_m1d=";
-      for (const auto &val : ant_m1d) {
-        std::cout << val << " ";
-      }
-      std::cout << std::endl;
-    }
+    // if (rank == 0) {
+    //   std::cout << "lenm=" << ant_lenm << ", ant_m1d=";
+    //   for (const auto &val : ant_m1d) {
+    //     std::cout << val << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
 
     // Density and Temperature Profiles
     // idensprof = 1;
@@ -1180,22 +1180,22 @@ public:
     rc = rmid;
 
     int nlen_filter = std::abs(filter_m1 - filter_m0) + 1;
-    if (rank == 0) {
-      std::cout << "nlen=" << nlen_filter << std::endl;
-    }
+    // if (rank == 0) {
+    //   std::cout << "nlen=" << nlen_filter << std::endl;
+    // }
 
     std::vector<int> filter_m1d(nlen_filter);
     int min_filter_m = std::min(filter_m0, filter_m1);
     for (int fic = 0; fic < nlen_filter; ++fic) {
       filter_m1d[fic] = min_filter_m + fic;
     }
-    if (rank == 0) {
-      std::cout << " filter_m1d=";
-      for (const auto &val : filter_m1d) {
-        std::cout << val << " ";
-      }
-      std::cout << std::endl;
-    }
+    // if (rank == 0) {
+    //   std::cout << " filter_m1d=";
+    //   for (const auto &val : filter_m1d) {
+    //     std::cout << val << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
 
     // Derived variables
     double nu_colstar = nu_colN / std::pow(std::sqrt(rc / rmaj), 3) *
@@ -1251,19 +1251,19 @@ public:
     double wTAE = std::abs(0.5 / rmaj / equ.getqloc_rt(rc, 0.0) *
                            std::sqrt(1.0 / equ.betaN)); // from field_class
     ant_w = ant_wowTAE * wTAE;
-    if (rank == 0) {
-      std::cout << "ant_w=" << ant_w << ", wTAE=" << wTAE << std::endl;
-    }
+    // if (rank == 0) {
+    //   std::cout << "ant_w=" << ant_w << ", wTAE=" << wTAE << std::endl;
+    // }
     for (int fic = 0; fic < ant_lenm; ++fic) {
       ant_m1d[fic] = std::min(ant_m0, ant_m1) - 1 + (fic + 1);
     }
-    if (rank == 0) {
-      std::cout << "lenm=" << ant_lenm << ", ant_m1d=";
-      for (const auto &val : ant_m1d) {
-        std::cout << val << " ";
-      }
-      std::cout << std::endl;
-    }
+    // if (rank == 0) {
+    //   std::cout << "lenm=" << ant_lenm << ", ant_m1d=";
+    //   for (const auto &val : ant_m1d) {
+    //     std::cout << val << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
 
     // (Rhots only as diagnosis)
     rhots = rhotN * std::sqrt(Tem * mass) / zcharge;
@@ -1282,6 +1282,8 @@ public:
                 << ", ntrack=" << irec_track << ", ifilter=" << ifilter
                 << ", pert_scheme=" << pert_scheme << ", v_par0=" << v_par0
                 << ", v_d=" << v_d << ", v_mirror=" << v_mirror
+                << ", v_par0 = " << v_par0 << ", v_ExB = " << v_ExB
+                << ", v_Epar = " << v_Epar << ", idwdt =" << idwdt
                 << ", irec_track=" << irec_track
                 << ", irec_Eparticle=" << irec_Eparticle
                 << ", irec_converge=" << irec_converge

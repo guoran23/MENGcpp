@@ -35,6 +35,8 @@ public:
   bool idiag_dxvdt;
   int idiag_dxvdt_step;
 
+  bool iphase_lock;
+
   // 物理对象
   Equilibrium equ;
   FieldExtCls fd;
@@ -55,6 +57,8 @@ public:
   std::vector<std::complex<double>> denskMkj_tot, jparkMkj_tot;
   double particle_tot_Energy = 0.0;
   double particle_tot_pert_Energy = 0.0;
+
+  double damping_rate = 0.0;
 
   // 计时
   double t1 = 0.0, t2 = 0.0;
@@ -299,7 +303,10 @@ public:
     for (int i = 0; i < lenntor; ++i) {
       omega_1_out[i] = std::complex<double>(0.0, 1.0) * TTT_global[i] / 2.0 /
                        WWW[i] / std::norm(amp[i]); // 计算omega
-      omega_1_out[i] =  - omega_1_out[i] / 6.28;
+      omega_1_out[i] =  omega_1_out[i] - std::complex<double>(0.0, 1.0) * this->damping_rate;
+      if (iphase_lock){
+        omega_1_out[i].real(0.0); //set Re(omega1)=0
+      }
     }
     // std::cout << "-----rank = " << rank << std::endl;
     // print_complex_vec("TTT", TTT, 0);
@@ -539,6 +546,8 @@ void GKEM2D1FCls::gkem_cls_readInput(const std::string &inputFile) {
   itest = reader.GetInteger("MENG", "itest", 0);
   idiag_dxvdt = reader.GetBoolean("MENG", "idiag_dxvdt", false);
   idiag_dxvdt_step = reader.GetInteger("Meng", "idiag_dxvdt_step", 100);
+  damping_rate = reader.GetReal("MENG", "damping_rate", 0.0); 
+  iphase_lock = reader.GetBoolean("MENG", "iphase_lock", false); 
 }
 
 void GKEM2D1FCls::gkem_cls_initialize() {
@@ -647,10 +656,11 @@ void GKEM2D1FCls::gkem_cls_initialize() {
   if (rank == 0) {
     print_vector("omega_0", omega_0);
     std::cout << "nsp = " << nsp << std::endl;
+    std::cout << "damping_rate = " << damping_rate << std::endl;
     print_vector("vts_vec", vts_vec);
     print_vector("paux_T_transit_vec", paux_T_transit_vec);
     print_vector("twoPi_o_T_transit_vec", twoPi_o_T_transit_vec);
     printf("Already run step #: %d\n", *nstart);
-    printf("time_all=%e, time_save=%e\n", time_all, time_save);
+    // printf("time_all=%e, time_save=%e\n", time_all, time_save);
   }
 }

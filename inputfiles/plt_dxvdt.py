@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 xv0_data = np.loadtxt("data_xv0_SP_0.txt")     # shape: (Nptot*nrun, 5)
 dxvdt_data = np.loadtxt("data_dxvdt_SP_0.txt") # shape: (Nptot*nrun, 5)
 #%%
-np_tot = 1000
+np_tot = 10000
 nrun = xv0_data.shape[0] // np_tot
 rad_min = 0.45
 rad_max = 0.55
-plt_run = 10
+plt_run = 3
 
 # ---- 拆分字段 ----
 xv0_rad    = xv0_data[:, 0]
@@ -39,7 +39,7 @@ weight2d=xv0_w.reshape(np_tot,nrun)
 draddt_2d=dxvdt_rad.reshape(np_tot,nrun)
 dthedt_2d=dxvdt_the.reshape(np_tot,nrun)
 plt.subplot(1,3,1)
-plt.plot(rad2d[:,plt_run],weight2d[:,plt_run])
+plt.plot(rad2d[:,plt_run], weight2d[:,plt_run],'o', markersize=2)
 plt.xlabel(" rad")
 plt.ylabel("weight")
 plt.title(f'plt_run={plt_run}')
@@ -53,6 +53,24 @@ plt.plot( dthedt_2d[:,plt_run])
 plt.ylabel(" d the /dt")
 plt.title(f'plt_run={plt_run}')
 plt.grid(True)
+rad=rad2d[:,plt_run]
+weight=weight2d[:,plt_run]
+# 设置 rad 的 bin 边界，例如从 0 到 1 分成 20 个区间
+bins = np.linspace(0, 1, 21)  # 20 bins between 0 and 1
+
+# 用 np.histogram 对 weight 按 rad 分 bin 求和
+weight_sums, bin_edges = np.histogram(rad, bins=bins, weights=weight)
+# 计算每个 bin 的中心点用于横坐标
+bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+
+plt.figure(figsize=(8, 5))
+plt.bar(bin_centers, weight_sums, width=np.diff(bins), align='center', edgecolor='black')
+plt.xlabel('rad')
+plt.ylabel('Sum of weights')
+plt.title('Weight Sum in rad bins')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
 
 # ---- 画图 ----
 plt.figure(figsize=(15, 4))

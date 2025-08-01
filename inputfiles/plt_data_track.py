@@ -1,5 +1,5 @@
-import numpy as np 
-import matplotlib.pyplot as plt
+# import numpy as np 
+# import matplotlib.pyplot as plt
 
 # Set the file name
 spid = 0  # Assuming spid is an integer
@@ -76,8 +76,9 @@ axes[4].plot(data["partw"])
 axes[4].set_title("w")
 
 # Variable P_phi
-axes[5].plot(data["partPcan"])
-axes[5].set_title(r"$P_{\phi}$")
+pltPcan = data["partPcan"]
+axes[5].plot(pltPcan[:,:]-pltPcan[0,:])
+axes[5].set_title(r"$P_{\phi}-Pcan_0$")
 
 # Variable E
 axes[6].plot(data["partE"])
@@ -86,7 +87,8 @@ axes[6].set_title("E")
 axes[7].plot(data["partrad"])
 axes[7].set_title("rad")
 #
-axes[8].plot(data["partPcan"][:,2])
+pltpar=2
+axes[8].plot(data["partPcan"][:,pltpar])
 axes[8].set_title("Pcan")
 plt.tight_layout()
 plt.show()

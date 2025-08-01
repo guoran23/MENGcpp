@@ -478,10 +478,11 @@ void FieldCls::field_cls_g2p2d1f_grad_complex(
   // timer.tic(3);
 
   size_t np = ptrad1d.size();
+  size_t lenntor = ntor1d.size();
   std::complex<double> zero_c(0.0, 0.0);
-  ptf1d100_c.assign(np, zero_c);
-  ptf1d010_c.assign(np, zero_c);
-  ptf1d001_c.assign(np, zero_c);
+  ptf1d100_c.assign(np * lenntor, zero_c);
+  ptf1d010_c.assign(np * lenntor, zero_c);
+  ptf1d001_c.assign(np * lenntor, zero_c);
 
   if (ngyro <= 1) {
     spc.spc_cls_sp2p2d1f_grad_complex(f1d, ntor1d, amp, ptrad1d, ptthe1d,
@@ -526,13 +527,14 @@ void FieldCls::field_cls_g2p2d1f_grad_complex(
         ptthe1dgy[i] = equ.gettheRZ(Rtmp, Ztmp);
       }
 
-      std::vector<std::complex<double>> temp_ptf1dgy100(np, zero_c),
-          temp_ptf1dgy010(np, zero_c), temp_ptf1dgy001(np, zero_c);
+      std::vector<std::complex<double>> temp_ptf1dgy100(np * lenntor, zero_c),
+          temp_ptf1dgy010(np * lenntor, zero_c),
+          temp_ptf1dgy001(np * lenntor, zero_c);
       spc.spc_cls_sp2p2d1f_grad_complex(f1d, ntor1d, amp, ptrad1dgy, ptthe1dgy,
                                         ptphi1d, temp_ptf1dgy100,
                                         temp_ptf1dgy010, temp_ptf1dgy001);
 
-      for (size_t i = 0; i < np; ++i) {
+      for (size_t i = 0; i < np * lenntor; ++i) {
         ptf1d100_c[i] += temp_ptf1dgy100[i];
         ptf1d010_c[i] += temp_ptf1dgy010[i];
         ptf1d001_c[i] += temp_ptf1dgy001[i];
@@ -540,7 +542,7 @@ void FieldCls::field_cls_g2p2d1f_grad_complex(
     }
 
     // Normalize by ngyro
-    for (size_t i = 0; i < np; ++i) {
+    for (size_t i = 0; i < np * lenntor; ++i) {
       ptf1d100_c[i] /= ngyro;
       ptf1d010_c[i] /= ngyro;
       ptf1d001_c[i] /= ngyro;

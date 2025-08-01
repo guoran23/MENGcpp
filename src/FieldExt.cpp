@@ -270,7 +270,7 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
                  omega;
           }
           this->apark[idx] +=
-              std::complex<double>(ww, 0) * radial_part * angular_part;
+              std::complex<double>(ww, 0) * this->phik[idx];
         } // nradfem
       }   // nthefem
     }     // mpoloidal
