@@ -30,7 +30,7 @@ public:
   FieldExtCls() {
     std::cout << "FieldExtCls default constructor called" << std::endl;
   }
-  
+
   ~FieldExtCls() = default;
 
   // Methods
@@ -39,11 +39,15 @@ public:
   void restart(int flag){};
   void field_ext_cls_test(const Equilibrium &equ, ParticleSpecies &pt);
   void
-  field_ext_cls_calc_W(std::vector<double> &WWW, const Equilibrium &equ,
-                       Particle &pt,
-                       const std::vector<std::complex<double>> &phik_c,
-                       const std::vector<int> &ntor1d);
-                       
+  write_field_output_on_grid(const Equilibrium &equ,
+                             const std::vector<std::complex<double>> &amp,
+                             const std::vector<std::complex<double>> &field_c,
+                             const std::string &filename);
+  void field_ext_cls_calc_W(std::vector<double> &WWW, const Equilibrium &equ,
+                            Particle &pt,
+                            const std::vector<std::complex<double>> &phik_c,
+                            const std::vector<int> &ntor1d);
+
   void field_ext_cls_record1d(int istep) {
     // timer.timer_cls_tic(4);
 
