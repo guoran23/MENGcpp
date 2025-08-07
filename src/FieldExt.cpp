@@ -97,6 +97,8 @@ void FieldExtCls::init(const Equilibrium &equ, Particle &pt) {
   this->apark.resize(this->ntotfem2d1f);
   this->amplitude_arr.assign(
       lenntor, std::complex<double>(0.0, 0.0)); // Default amplitude
+  this->amplitude_A_arr.assign(
+      lenntor, std::complex<double>(0.0, 0.0)); // Default amplitude
 
   // Initialize perturbation fields==0
   for (int i = 0; i < this->ntotfem2d1f; ++i) {
@@ -184,6 +186,7 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
   for (size_t i = 0; i < amp_arr.size(); ++i) {
     this->amplitude_arr[i] = std::complex<double>(amp_arr[i], 0.0);
   }
+  this->amplitude_A_arr = this->amplitude_arr; // initial amplitude A=Phi
 
   if (rank == 0) {
     std::cout << "Initializing perturbations with rc_arr, amp_arr, "

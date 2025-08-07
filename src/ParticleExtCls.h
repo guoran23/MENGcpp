@@ -74,6 +74,7 @@ public:
       const std::vector<std::complex<double>> &apark,
       const std::vector<int> &ntor1d,
       const std::vector<std::complex<double>> &amp,
+      const std::vector<std::complex<double>> &amp_A,
       std::vector<ParticleCoords> &dxvdt,
       std::vector<std::complex<double>> &TTT_allsp);
 
@@ -84,6 +85,7 @@ public:
       const std::vector<std::complex<double>> &apark,
       const std::vector<int> &ntor1d,
       const std::vector<std::complex<double>> &amp,
+      const std::vector<std::complex<double>> &amp_A,
       std::vector<double> &partrad0,
       std::vector<double> &parttheta0,
       std::vector<double> &partphitor0,
@@ -106,6 +108,7 @@ public:
       const std::vector<std::complex<double>> &apark,
       const std::vector<int> &ntor1d,
       const std::vector<std::complex<double>> &amp,
+      const std::vector<std::complex<double>> &amp_A,
       std::vector<std::complex<double>> &TTT_onesp);
   std::vector<std::complex<double>>
   calc_T_onePar(const Equilibrium &equ, const FieldCls &fd,

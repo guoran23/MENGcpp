@@ -53,6 +53,7 @@ public:
   // for RK methods
   std::vector<ParticleCoords> xv0, dxv_sum, dxvdt;
   std::vector<std::complex<double>> amp0, damp_sum, dampdt;
+  std::vector<std::complex<double>> amp0_Apar, damp_A_sum, damp_A_dt;
 
   std::vector<std::complex<double>> denskMkj_tot, jparkMkj_tot;
   double particle_tot_Energy = 0.0;
@@ -65,6 +66,20 @@ public:
 
   //
   int ntrack = 10; // 轨道数
+
+  struct AmplitudeSet {
+    std::vector<std::complex<double>> amp;        // 按值存储 amplitude
+    std::vector<std::complex<double>> with_phase; // 带相位的振幅
+    std::vector<std::complex<double>> ddt;        // 导数
+    std::string name;                             // 可选，用于调试
+
+    // 构造函数：这里用 const 引用接受原始 vector，按值复制
+    AmplitudeSet(const std::vector<std::complex<double>> &a,
+                 const std::string &n,
+                 size_t len)
+        : amp(a), // ✅ 复制内容
+          with_phase(len, {0.0, 0.0}), ddt(len, {0.0, 0.0}), name(n) {}
+  };
 
   // 构造与析构
   GKEM2D1FCls();
@@ -141,6 +156,7 @@ public:
   }
   void write_amplitude(int irun) {
     write_data("data_Amplitude.txt", fd.amplitude_arr, irun);
+    write_data("data_Amplitude_Apar.txt", fd.amplitude_A_arr, irun);
   }
 
   void write_omega1(int irun) {
@@ -294,6 +310,7 @@ public:
                              const std::vector<std::complex<double>> &amp) {
     // MPI 通信
     constexpr std::complex<double> zero_c(0.0, 0.0);
+    constexpr std::complex<double> i_c(0.0, 1.0);
     std::fill(TTT_global.begin(), TTT_global.end(), zero_c);
     MPI_Allreduce(TTT.data(), TTT_global.data(), lenntor, MPI_DOUBLE_COMPLEX,
                   MPI_SUM, MPI_COMM_WORLD);
@@ -301,10 +318,10 @@ public:
     // 计算omega
     double rhoN = equ.rhoN;
     for (int i = 0; i < lenntor; ++i) {
-      omega_1_out[i] = std::complex<double>(0.0, 1.0) * TTT_global[i] / 2.0 /
-                       WWW[i] / std::norm(amp[i]) + this->omega_0[i]; // 计算omega
       omega_1_out[i] =
-          omega_1_out[i] - std::complex<double>(0.0, 1.0) * this->damping_rate;
+          i_c * TTT_global[i] / 2.0 / WWW[i] / std::norm(amp[i]); // 计算omega
+
+      omega_1_out[i] = omega_1_out[i] - i_c * this->damping_rate;
       if (iphase_lock) {
         omega_1_out[i].real(0.0); // set Re(omega1)=0
       }
@@ -356,15 +373,24 @@ public:
     }
   }
 
-  void calc_dAdt(std::vector<std::complex<double>> &dAdt,
-                 const std::vector<std::complex<double>> &amp_tmp,
+  void calc_dAdt(std::vector<std::complex<double>> &dPhidt,
+                 std::vector<std::complex<double>> &dApardt,
+                 const std::vector<std::complex<double>> &Phi_amp,
+                 const std::vector<std::complex<double>> &Apar_amp,
                  const std::vector<std::complex<double>> &omega_1_tmp) {
     //
-    dAdt.resize(lenntor, std::complex<double>(0.0, 0.0));
+    dPhidt.resize(lenntor, std::complex<double>(0.0, 0.0));
     constexpr std::complex<double> i_c = {0.0, 1.0};
-    for (size_t itor = 0; itor < amp_tmp.size(); ++itor) {
-      // dA/dt = - i * omega_1 * A
-      dAdt[itor] = - i_c * omega_1_tmp[itor] * amp_tmp[itor]; // 计算dA
+    std::vector<std::complex<double>> phi_minus_A(
+        lenntor, std::complex<double>(0.0, 0.0));
+
+    for (size_t itor = 0; itor < Phi_amp.size(); ++itor) {
+      phi_minus_A[itor] = Phi_amp[itor] - Apar_amp[itor];
+      // dPhi/dt
+      dPhidt[itor] = i_c * omega_0[itor] * phi_minus_A[itor] -
+                     2.0 * i_c * (omega_1_tmp[itor]) * Phi_amp[itor];
+      // dApardt
+      dApardt[itor] = -i_c * omega_0[itor] * phi_minus_A[itor];
     }
   }
 
@@ -384,77 +410,120 @@ public:
       xv0[fsc] = species.getCoords(); // xv0= pt
     }
     std::fill(damp_sum.begin(), damp_sum.end(), zero_c);
+    std::fill(damp_A_sum.begin(), damp_A_sum.end(), zero_c);
 
-    std::vector<std::complex<double>> amp_tmp;
-    amp_tmp = fd.amplitude_arr; // 复制amplitude_arr到amp_tmp
     amp0 = fd.amplitude_arr;
+    amp0_Apar = fd.amplitude_A_arr;
+    //临时变量
+    std::vector<AmplitudeSet> fields = {
+        AmplitudeSet(fd.amplitude_arr, "phi", lenntor),
+        AmplitudeSet(fd.amplitude_A_arr, "Apar", lenntor)};
+    for (auto &field : fields) {
+      calc_amp_with_phase(field.with_phase, field.amp, time_now);
+    }
 
-    std::vector<std::complex<double>> amp0_with_phase(lenntor, zero_c);
-    std::vector<std::complex<double>> amp_with_phase_tmp(lenntor, zero_c);
-    calc_amp_with_phase(amp0_with_phase, amp0, time_now);
-    amp_with_phase_tmp = amp0_with_phase;
-    // print_complex_vec("amp0_with_phase", amp0_with_phase, 0);
-    this->amp_with_phase_diag = amp0_with_phase;
+    this->amp_with_phase_diag = fields[0].with_phase; // phi with_phase
+
     std::vector<std::complex<double>> omega_1_tmp(lenntor, zero_c);
 
     // Step 1, at t = 0
-    pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp0_with_phase, dxvdt, TTT);
+    pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(equ, fd, fd.phik, fd.apark,
+                                               fd.ntor1d,
+                                               fields[0].with_phase, // phi
+                                               fields[1].with_phase, // Apar
+                                               dxvdt, TTT);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
-
     gkem_cls_solve_delta_omega(omega_1_tmp, amp0);
-    calc_dAdt(dampdt, amp0, omega_1_tmp);
-    add_dAdt(damp_sum, dampdt, dt1o6);
+    calc_dAdt(fields[0].ddt, fields[1].ddt, fields[0].amp, fields[1].amp,
+              omega_1_tmp);
+    add_dAdt(damp_sum, fields[0].ddt, dt1o6);
+    add_dAdt(damp_A_sum, fields[1].ddt, dt1o6);
 
     // Step 2
     pt->particle_add_coords2sp(*pt, dxvdt, dthalf);
-    add_dAdt(amp_tmp, dampdt, dthalf);
-    calc_amp_with_phase(amp_with_phase_tmp, amp_tmp, time_now + dthalf);
+    // 添加导数：统一处理
+    for (auto &field : fields) {
+      add_dAdt(field.amp, field.ddt, dthalf);
+    }
+    // 统一处理：计算 with_phase
+    for (auto &field : fields) {
+      calc_amp_with_phase(field.with_phase, field.amp, time_now + dthalf);
+    }
 
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase_tmp, dxvdt, TTT);
+        equ, fd, fd.phik, fd.apark, fd.ntor1d, fields[0].with_phase, // phi
+        fields[1].with_phase,                                        // Apar
+        dxvdt, TTT);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt2o6);
 
-    gkem_cls_solve_delta_omega(omega_1_tmp, amp_tmp);
-    calc_dAdt(dampdt, amp_tmp, omega_1_tmp);
-    add_dAdt(damp_sum, dampdt, dt2o6);
+    gkem_cls_solve_delta_omega(omega_1_tmp, fields[0].amp);
+    calc_dAdt(fields[0].ddt, fields[1].ddt, fields[0].amp, fields[1].amp,
+              omega_1_tmp);
+    add_dAdt(damp_sum, fields[0].ddt, dt2o6);
+    add_dAdt(damp_A_sum, fields[1].ddt, dt2o6);
 
     // Step 3
     pt->particle_setvalue2sp_from_coords(*pt, xv0); // reset to initial
     pt->particle_add_coords2sp(*pt, dxvdt, dthalf);
 
-    amp_tmp = amp0;
-    add_dAdt(amp_tmp, dampdt, dthalf);
-    calc_amp_with_phase(amp_with_phase_tmp, amp_tmp, time_now + dthalf);
+    fields[0].amp = amp0; //reset to initial
+    fields[1].amp = amp0_Apar;
+
+    for (auto &field : fields) {
+      add_dAdt(field.amp, field.ddt, dthalf);
+    }
+    for (auto &field : fields) {
+      calc_amp_with_phase(field.with_phase, field.amp, time_now + dthalf);
+    }
 
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase_tmp, dxvdt, TTT);
+        equ, fd, fd.phik, fd.apark, fd.ntor1d, fields[0].with_phase, // phi
+        fields[1].with_phase,                                        // Apar
+        dxvdt, TTT);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt2o6);
 
-    gkem_cls_solve_delta_omega(omega_1_tmp, amp_tmp);
-    calc_dAdt(dampdt, amp_tmp, omega_1_tmp);
-    add_dAdt(damp_sum, dampdt, dt2o6);
+    gkem_cls_solve_delta_omega(omega_1_tmp, fields[0].amp);
+    calc_dAdt(fields[0].ddt, fields[1].ddt, fields[0].amp, fields[1].amp,
+              omega_1_tmp);
+    add_dAdt(damp_sum, fields[0].ddt, dt2o6);
+    add_dAdt(damp_A_sum, fields[1].ddt, dt2o6);
 
     // // Step 4
     pt->particle_setvalue2sp_from_coords(*pt, xv0); // reset to initial
     pt->particle_add_coords2sp(*pt, dxvdt, dt);
 
-    amp_tmp = amp0;
-    add_dAdt(amp_tmp, dampdt, dt);
-    calc_amp_with_phase(amp_with_phase_tmp, amp_tmp, time_now + dt);
+    fields[0].amp = amp0;
+    fields[1].amp = amp0_Apar;
+
+    for (auto &field : fields) {
+      add_dAdt(field.amp, field.ddt, dt);
+    }
+    for (auto &field : fields) {
+      calc_amp_with_phase(field.with_phase, field.amp, time_now + dt);
+    }
 
     pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp_with_phase_tmp, dxvdt, TTT);
+        equ, fd, fd.phik, fd.apark, fd.ntor1d, fields[0].with_phase, // phi
+        fields[1].with_phase,                                        // Apar
+        dxvdt, TTT);
     pt->particle_coords_cls_axpy2sp(dxv_sum, dxvdt, dt1o6);
 
-    gkem_cls_solve_delta_omega(omega_1_tmp, amp_tmp);
-    calc_dAdt(dampdt, amp_tmp, omega_1_tmp);
-    add_dAdt(damp_sum, dampdt, dt1o6);
+    gkem_cls_solve_delta_omega(omega_1_tmp, fields[0].amp);
+
+    calc_dAdt(fields[0].ddt, fields[1].ddt, fields[0].amp, fields[1].amp,
+              omega_1_tmp);
+    add_dAdt(damp_sum, fields[0].ddt, dt1o6);
+    add_dAdt(damp_A_sum, fields[1].ddt, dt1o6);
 
     // Final update of Amp and particle coordinates
     pt->particle_setvalue2sp_from_coords(*pt, xv0);
     pt->particle_add_coords2sp(*pt, dxv_sum, 1.0);
+
+    fd.amplitude_arr = amp0;
+    fd.amplitude_A_arr = amp0_Apar;
     add_dAdt(fd.amplitude_arr, damp_sum, 1.0);
+    add_dAdt(fd.amplitude_A_arr, damp_A_sum, 1.0);
+
     this->omega_1 = omega_1_tmp; // update omega_1 for recording
   }
 
@@ -469,24 +538,42 @@ public:
       int nptot = species.getNptot();
       xv0[fsc] = species.getCoords(); // xv0= pt
     }
-    std::vector<std::complex<double>> amp_tmp(lenntor, zero_c);
-    amp_tmp = fd.amplitude_arr; // 复制amplitude_arr到amp_tmp
-    amp0 = fd.amplitude_arr;
 
-    std::vector<std::complex<double>> amp0_with_phase(lenntor, zero_c);
-    calc_amp_with_phase(amp0_with_phase, amp0, time_now);
-    this->amp_with_phase_diag = amp0_with_phase;
+    amp0 = fd.amplitude_arr;
+    amp0_Apar = fd.amplitude_A_arr;
+
+    // 用统一结构组织两个场变量
+    std::vector<AmplitudeSet> fields = {
+        AmplitudeSet(fd.amplitude_arr, "phi", lenntor),
+        AmplitudeSet(fd.amplitude_A_arr, "Apar", lenntor)};
+
+    auto &phi = fields[0];
+    auto &apar = fields[1];
+
+    // 带相位计算
+    calc_amp_with_phase(phi.with_phase, phi.amp, time_now);
+    calc_amp_with_phase(apar.with_phase, apar.amp, time_now);
+
+    this->amp_with_phase_diag = phi.with_phase; // 保存诊断数据
 
     // Step 1
-    pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(
-        equ, fd, fd.phik, fd.apark, fd.ntor1d, amp0_with_phase, dxvdt, TTT);
+    pt->particle_ext_cls_dxvpardt123EM2d1f_2sp(equ, fd, fd.phik, fd.apark,
+                                               fd.ntor1d,
+                                               phi.with_phase,  // phi
+                                               apar.with_phase, // Apar
+                                               dxvdt, TTT);
     std::vector<std::complex<double>> omega_1_tmp(lenntor, zero_c);
     gkem_cls_solve_delta_omega(omega_1_tmp, amp0);
-    calc_dAdt(dampdt, amp0, omega_1_tmp);
-    pt->particle_add_coords2sp(*pt, dxvdt, dt);
-    add_dAdt(amp_tmp, dampdt, dt);
+    calc_dAdt(phi.ddt, apar.ddt, phi.amp, apar.amp, omega_1_tmp);
 
-    fd.amplitude_arr = amp_tmp;  // 更新fd.amplitude_arr
+    pt->particle_add_coords2sp(*pt, dxvdt, dt);
+
+    add_dAdt(phi.amp, phi.ddt, dt);
+    add_dAdt(apar.amp, apar.ddt, dt);
+
+    fd.amplitude_arr = phi.amp;
+    fd.amplitude_A_arr = apar.amp;
+
     this->omega_1 = omega_1_tmp; // 更新omega_1
   }
 
@@ -614,6 +701,10 @@ void GKEM2D1FCls::gkem_cls_initialize() {
   damp_sum.resize(lenntor, std::complex<double>(0.0, 0.0));
   dampdt.resize(lenntor, std::complex<double>(0.0, 0.0));
   amp_with_phase_diag.resize(lenntor, std::complex<double>(0.0, 0.0));
+
+  amp0_Apar.resize(lenntor, std::complex<double>(0.0, 0.0));
+  damp_A_sum.resize(lenntor, std::complex<double>(0.0, 0.0));
+  damp_A_dt.resize(lenntor, std::complex<double>(0.0, 0.0));
 
   // Calculate the WWW vector
   fd.field_ext_cls_calc_W(WWW, equ, *pt, fd.phik, fd.ntor1d);

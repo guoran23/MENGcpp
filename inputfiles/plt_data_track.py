@@ -1,5 +1,5 @@
 # import numpy as np 
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 # Set the file name
 spid = 0  # Assuming spid is an integer

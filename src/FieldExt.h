@@ -23,6 +23,8 @@ public:
   std::vector<std::complex<double>> denskMkj, phik, jparkMkj, apark;
   std::vector<std::complex<double>>
       amplitude_arr; // Amplitude array for perturbations
+  std::vector<std::complex<double>>
+      amplitude_A_arr; // Amplitude array for perturbations
   std::vector<double> omega0;
   // int imixvar = 0; //0, no mixvar, 1 mixing variable
 
