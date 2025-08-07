@@ -331,9 +331,9 @@ int main(int argc, char **argv) {
   
   auto start_time = std::chrono::high_resolution_clock::now();
   // TestCls test(argc, argv);
-  // test.run();
-  // test.testParticle();
-  // test.testSplineNd();
+  // // test.run();
+  // // test.testParticle();
+  // // test.testSplineNd();
   // test.testField();
   // return 0;
 

@@ -465,9 +465,6 @@ std::vector<std::complex<double>> ParticleExtCls::calc_T_onePar(
   for (int itor = 0; itor < lenntor; ++itor) {
     // Calculate the perturbation term
     constexpr std::complex<double> i_c(0.0, 1.0);
-    std::complex<double> phase_factor(0.0, 0.0);
-    // phase_factor =
-    //     std::exp(-i_c * static_cast<double>(ntor1d[itor]) * partphitor);
     TTT[itor] = partw * (vd_rad * std::conj(dfdrad_c[itor]) +
                          vd_the * std::conj(dfdthe_c[itor]));
 

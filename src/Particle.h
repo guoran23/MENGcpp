@@ -887,7 +887,7 @@ public:
       if (i == 1) {
         ref_rmin = rmin_input;
         ref_rmax = rmax_input;
-        this->rmin = rmin_input;
+        this->rmin = rmin_input; // rmin for Particle class
         this->rmax = rmax_input;
       } else {
         if (std::abs(rmin_input - ref_rmin) > 1e-10 ||
@@ -927,6 +927,11 @@ public:
       }
     }
     // check rmin and rmax for all species are the same
+    if (rank_in == 0) {
+      std::cout << "Particle Class: "
+                << "rmin = " << this->rmin << ", rmax = " << this->rmax
+                << std::endl;
+    }
   }
   void writeProfiles(const int &rank) {
     if (rank == 0) {
@@ -1214,7 +1219,7 @@ public:
     mumaxovN2 = std::pow(vparmaxovN, 2) / (2.0 * Bax);
     std::cout << "mumaxovN2=" << mumaxovN2 << std::endl;
     species.vts = std::sqrt(Tem / mass);
-    
+
     this->particle_cls_mean_dens(equ, species, this->rmin, this->rmax, 100, 200,
                                  this->Vtot, this->dens_intg, this->dens_mean,
                                  this->Stot);
@@ -1224,7 +1229,7 @@ public:
     // this->Vtot = this->Stot * this->rmaj * this->phitorwid;
     // 3d spline 2021/12/08; use NPTOT_ALL 2022/03/10!
     double Cp2g = Vtot / static_cast<double>(nptot_all);
-    std::cout << "nptot_all =" << nptot_all <<std::endl;
+    std::cout << "nptot_all =" << nptot_all << std::endl;
     Cp2g *= nsonN;
     Cp2g *= dens_mean / equ.rhoN / equ.rhoN;
 
@@ -1238,7 +1243,7 @@ public:
     Cp2g1d *= nsonN;
     Cp2g1d *= dens_mean / equ.rhoN / equ.rhoN;
     Cp2g1d /= (4.0 * std::pow(M_PI, 2) * rmaj / static_cast<double>(Nphimult));
-    std::cout<<"equ.rhoN= "<< equ.rhoN << std::endl;
+    std::cout << "equ.rhoN= " << equ.rhoN << std::endl;
     species.setCp2g(Cp2g);
     species.setCp2g2d1f(Cp2g2d1f);
     species.setCp2g1d(Cp2g1d);

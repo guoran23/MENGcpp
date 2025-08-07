@@ -291,7 +291,7 @@ public:
 
   void
   gkem_cls_solve_delta_omega(std::vector<std::complex<double>> &omega_1_out,
-                             std::vector<std::complex<double>> &amp) {
+                             const std::vector<std::complex<double>> &amp) {
     // MPI 通信
     constexpr std::complex<double> zero_c(0.0, 0.0);
     std::fill(TTT_global.begin(), TTT_global.end(), zero_c);
@@ -302,10 +302,11 @@ public:
     double rhoN = equ.rhoN;
     for (int i = 0; i < lenntor; ++i) {
       omega_1_out[i] = std::complex<double>(0.0, 1.0) * TTT_global[i] / 2.0 /
-                       WWW[i] / std::norm(amp[i]); // 计算omega
-      omega_1_out[i] =  omega_1_out[i] - std::complex<double>(0.0, 1.0) * this->damping_rate;
-      if (iphase_lock){
-        omega_1_out[i].real(0.0); //set Re(omega1)=0
+                       WWW[i] / std::norm(amp[i]) + this->omega_0[i]; // 计算omega
+      omega_1_out[i] =
+          omega_1_out[i] - std::complex<double>(0.0, 1.0) * this->damping_rate;
+      if (iphase_lock) {
+        omega_1_out[i].real(0.0); // set Re(omega1)=0
       }
     }
     // std::cout << "-----rank = " << rank << std::endl;
@@ -346,14 +347,13 @@ public:
                 const std::vector<std::complex<double>> &dAdt,
                 const double dt) {
     for (size_t itor = 0; itor < A_out.size(); ++itor) {
-     
+
       if (this->itest == 0) {
-        A_out[itor] +=  0.0;
+        A_out[itor] += 0.0;
       } else {
-         A_out[itor] += dAdt[itor] * dt;
+        A_out[itor] += dAdt[itor] * dt;
       }
     }
-
   }
 
   void calc_dAdt(std::vector<std::complex<double>> &dAdt,
@@ -364,7 +364,7 @@ public:
     constexpr std::complex<double> i_c = {0.0, 1.0};
     for (size_t itor = 0; itor < amp_tmp.size(); ++itor) {
       // dA/dt = - i * omega_1 * A
-      dAdt[itor] = -i_c * omega_1_tmp[itor] * amp_tmp[itor]; // 计算dA
+      dAdt[itor] = - i_c * omega_1_tmp[itor] * amp_tmp[itor]; // 计算dA
     }
   }
 
@@ -546,8 +546,8 @@ void GKEM2D1FCls::gkem_cls_readInput(const std::string &inputFile) {
   itest = reader.GetInteger("MENG", "itest", 0);
   idiag_dxvdt = reader.GetBoolean("MENG", "idiag_dxvdt", false);
   idiag_dxvdt_step = reader.GetInteger("Meng", "idiag_dxvdt_step", 100);
-  damping_rate = reader.GetReal("MENG", "damping_rate", 0.0); 
-  iphase_lock = reader.GetBoolean("MENG", "iphase_lock", false); 
+  damping_rate = reader.GetReal("MENG", "damping_rate", 0.0);
+  iphase_lock = reader.GetBoolean("MENG", "iphase_lock", false);
 }
 
 void GKEM2D1FCls::gkem_cls_initialize() {

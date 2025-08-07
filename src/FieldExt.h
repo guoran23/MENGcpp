@@ -43,6 +43,10 @@ public:
                              const std::vector<std::complex<double>> &amp,
                              const std::vector<std::complex<double>> &field_c,
                              const std::string &filename);
+  void write_complex_field_gradient_on_grid(
+      const Equilibrium &equ, const std::vector<std::complex<double>> &amp,
+      const std::vector<std::complex<double>> &field,
+      const std::string &filename);
   void field_ext_cls_calc_W(std::vector<double> &WWW, const Equilibrium &equ,
                             Particle &pt,
                             const std::vector<std::complex<double>> &phik_c,

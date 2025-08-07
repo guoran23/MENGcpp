@@ -5,12 +5,12 @@ from compare_derivative import compare_derivative
 # === Parameter Setup ===
 Nrad = 32
 Nthe = 64
-Nphi = 16
+Nphi = 64
 n = 6
 m = [10, 11] # not used in plot
 
 filename = 'data_field2particle.txt'
-filename = 'data_field2particle_apark.txt'
+# filename = 'data_field2particle_apark.txt'
 
 # === Read Data ===
 with open(filename, 'r') as f:
