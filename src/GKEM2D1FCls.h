@@ -37,6 +37,7 @@ public:
   int idiag_dxvdt_step;
 
   bool iphase_lock;
+  bool iAmp_Phi_A_equal;
 
   // 物理对象
   Equilibrium equ;
@@ -78,7 +79,7 @@ public:
     AmplitudeSet(const std::vector<std::complex<double>> &a,
                  const std::string &n,
                  size_t len)
-        : amp(a), // ✅ 复制内容
+        : amp(a), //
           with_phase(len, {0.0, 0.0}), ddt(len, {0.0, 0.0}), name(n) {}
   };
 
@@ -316,8 +317,6 @@ public:
     MPI_Allreduce(TTT.data(), TTT_global.data(), lenntor, MPI_DOUBLE_COMPLEX,
                   MPI_SUM, MPI_COMM_WORLD);
 
-    // 计算omega
-    double rhoN = equ.rhoN;
     for (int i = 0; i < lenntor; ++i) {
       omega_1_out[i] =
           i_c * TTT_global[i] / 2.0 / WWW[i] / std::norm(amp[i]); // 计算omega
@@ -386,9 +385,15 @@ public:
 
     for (size_t itor = 0; itor < lenntor; ++itor) {
       auto diff = Phi_amp[itor] - Apar_amp[itor];
+      if(this->iAmp_Phi_A_equal){
+         dPhidt[itor] =  - 2.0 * i_c * omega_1_tmp[itor] * Phi_amp[itor];
+         dApardt[itor] = dPhidt[itor];
+      }
+      else{
       dPhidt[itor] = i_c * omega_0[itor] * diff -
                      2.0 * i_c * omega_1_tmp[itor] * Phi_amp[itor];
       dApardt[itor] = -i_c * omega_0[itor] * diff;
+      }
     }
   }
 
@@ -633,6 +638,7 @@ void GKEM2D1FCls::gkem_cls_readInput(const std::string &inputFile) {
   idiag_dxvdt_step = reader.GetInteger("Meng", "idiag_dxvdt_step", 100);
   damping_rate = reader.GetReal("MENG", "damping_rate", 0.0);
   iphase_lock = reader.GetBoolean("MENG", "iphase_lock", false);
+  iAmp_Phi_A_equal = reader.GetBoolean("MENG", "iAmp_Phi_A_equal", false);
 }
 
 void GKEM2D1FCls::gkem_cls_initialize() {
@@ -746,6 +752,7 @@ void GKEM2D1FCls::gkem_cls_initialize() {
     print_vector("omega_0", omega_0);
     std::cout << "nsp = " << nsp << std::endl;
     std::cout << "damping_rate = " << damping_rate << std::endl;
+    std::cout << "iAmp_Phi_A_equal = " << iAmp_Phi_A_equal << std::endl;
     print_vector("vts_vec", vts_vec);
     print_vector("paux_T_transit_vec", paux_T_transit_vec);
     print_vector("twoPi_o_T_transit_vec", twoPi_o_T_transit_vec);
