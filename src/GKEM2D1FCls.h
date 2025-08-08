@@ -7,6 +7,7 @@
 #include "Particle.h"
 #include "ParticleExtCls.h"
 #include <memory>
+#include <cassert>
 
 #define CHECK_NAN(x, label)                                                    \
   if (std::isnan(std::real(x)) || std::isnan(std::imag(x)))                    \
@@ -378,19 +379,16 @@ public:
                  const std::vector<std::complex<double>> &Phi_amp,
                  const std::vector<std::complex<double>> &Apar_amp,
                  const std::vector<std::complex<double>> &omega_1_tmp) {
-    //
-    dPhidt.resize(lenntor, std::complex<double>(0.0, 0.0));
-    constexpr std::complex<double> i_c = {0.0, 1.0};
-    std::vector<std::complex<double>> phi_minus_A(
-        lenntor, std::complex<double>(0.0, 0.0));
+    assert(Phi_amp.size() == lenntor && Apar_amp.size() == lenntor);
+    assert(omega_1_tmp.size() == lenntor && omega_0.size() == lenntor);
 
-    for (size_t itor = 0; itor < Phi_amp.size(); ++itor) {
-      phi_minus_A[itor] = Phi_amp[itor] - Apar_amp[itor];
-      // dPhi/dt
-      dPhidt[itor] = i_c * omega_0[itor] * phi_minus_A[itor] -
-                     2.0 * i_c * (omega_1_tmp[itor]) * Phi_amp[itor];
-      // dApardt
-      dApardt[itor] = -i_c * omega_0[itor] * phi_minus_A[itor];
+    constexpr std::complex<double> i_c(0.0, 1.0);
+
+    for (size_t itor = 0; itor < lenntor; ++itor) {
+      auto diff = Phi_amp[itor] - Apar_amp[itor];
+      dPhidt[itor] = i_c * omega_0[itor] * diff -
+                     2.0 * i_c * omega_1_tmp[itor] * Phi_amp[itor];
+      dApardt[itor] = -i_c * omega_0[itor] * diff;
     }
   }
 
@@ -466,7 +464,7 @@ public:
     pt->particle_setvalue2sp_from_coords(*pt, xv0); // reset to initial
     pt->particle_add_coords2sp(*pt, dxvdt, dthalf);
 
-    fields[0].amp = amp0; //reset to initial
+    fields[0].amp = amp0; // reset to initial
     fields[1].amp = amp0_Apar;
 
     for (auto &field : fields) {

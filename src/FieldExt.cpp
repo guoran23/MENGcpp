@@ -185,15 +185,17 @@ void FieldExtCls::initializePerturbations(const Equilibrium &equ) {
   this->omega0 = omega_arr; // Store omega0 for later use
   for (size_t i = 0; i < amp_arr.size(); ++i) {
     this->amplitude_arr[i] = std::complex<double>(amp_arr[i], 0.0);
+    this->amplitude_A_arr[i] = - this->amplitude_arr[i]; // initial amplitude A=Phi
   }
-  this->amplitude_A_arr = this->amplitude_arr; // initial amplitude A=Phi
+  // this->amplitude_A_arr = this->amplitude_arr; // initial amplitude A=Phi
 
   if (rank == 0) {
     std::cout << "Initializing perturbations with rc_arr, amp_arr, "
                  "rwidth_arr, mpoloidal_arr\n";
     for (int i = 0; i < this->lenntor; ++i) {
       std::cout << "itor=" << i << ", ntor=" << ntor1d[i]
-                << ", amp=" << amp_arr[i] << ", omega=" << omega_arr[i]
+                << ", amp=" << std::scientific << std::setprecision(6)
+                << amp_arr[i] << std::defaultfloat << ", omega=" << omega_arr[i]
                 << ", mpoloidal=[";
       for (size_t j = 0; j < mpoloidal_arr[i].size(); ++j) {
         std::cout << mpoloidal_arr[i][j];
